@@ -21,7 +21,8 @@ lazy val testkit = Project("elastic4s-testkit", file("elastic4s-testkit"))
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % ScalatestVersion,
       "org.elasticsearch.module" % "lang-groovy" % ElasticsearchVersion,
-      "org.elasticsearch" % "elasticsearch" % ElasticsearchVersion classifier "tests"
+      "org.elasticsearch" % "elasticsearch" % ElasticsearchVersion classifier "tests",
+      "org.elasticsearch.plugin" % "shield" % ElasticsearchVersion classifier "tests"
     )
   )
   .dependsOn(core)
@@ -52,7 +53,7 @@ lazy val jackson = Project("elastic4s-jackson", file("elastic4s-jackson"))
     libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % JacksonVersion exclude("org.scala-lang", "scala-library"),
     libraryDependencies += "com.fasterxml.jackson.datatype" % "jackson-datatype-joda" % JacksonVersion
   ).dependsOn(core, testkit % "test")
-  
+
 lazy val circe = Project("elastic4s-circe", file("elastic4s-circe"))
 .settings(
   name := "elastic4s-circe",

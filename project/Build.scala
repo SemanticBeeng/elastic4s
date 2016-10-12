@@ -30,6 +30,7 @@ object Build extends AutoPlugin {
     crossScalaVersions := Seq("2.11.8", "2.10.5"),
     publishMavenStyle := true,
     resolvers += Resolver.mavenLocal,
+    resolvers += "elasticsearch-releases" at "https://maven.elasticsearch.org/releases",
     fork in Test := true,
     javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:MaxPermSize=2048M", "-XX:+CMSClassUnloadingEnabled"),
     publishArtifact in Test := false,
