@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.elasticsearch.plugin</groupId>
+    <artifactId>x-plugins</artifactId>
+    <version>2.4.1</version>
+    <packaging>pom</packaging>
+    <name>X-Plugins: Parent POM</name>
+
+    <parent>
+        <groupId>org.elasticsearch.plugin</groupId>
+        <artifactId>plugins</artifactId>
+        <version>2.4.1</version>
+    </parent>
+
+    <properties>
+        <elasticsearch.license.header>${elasticsearch.tools.directory}/commercial-license-check/elasticsearch_license_header.txt</elasticsearch.license.header>
+        <elasticsearch.license.headerDefinition>${elasticsearch.tools.directory}/commercial-license-check/license_header_definition.xml</elasticsearch.license.headerDefinition>
+        <assembly.attach>true</assembly.attach>
+        <sources.attach>true</sources.attach>
+        <deploy.skip>false</deploy.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
+
+    <scm>
+        <connection>scm:git:git@github.com:elastic/x-plugins.git</connection>
+        <developerConnection>scm:git:git@github.com:elastic/x-plugins.git</developerConnection>
+        <url>http://github.com/elastic/x-plugins</url>
+    </scm>
+
+    
+
+    <dependencies>
+      <dependency>
+          <groupId>org.elasticsearch</groupId>
+          <artifactId>securemock</artifactId>
+          <version>${securemock.version}</version>
+          <scope>test</scope>
+      </dependency>
+    </dependencies>
+
+    <build>
+      <pluginManagement>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-remote-resources-plugin</artifactId>
+            <configuration>
+              <!-- include x-dev-tools resources bundle -->
+              <resourceBundles combine.children="append">
+                <resourceBundle>org.elasticsearch:x-dev-tools:${elasticsearch.version}</resourceBundle>
+              </resourceBundles>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <configuration>
+              <attach>${assembly.attach}</attach>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+                <execution>
+                    <id>attach-sources</id>
+                    <goals>
+                        <goal>jar</goal>
+                    </goals>
+                    <configuration>
+                        <attach>${sources.attach}</attach>
+                    </configuration>
+                </execution>
+            </executions>
+          </plugin>
+          <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-antrun-plugin</artifactId>
+              <executions>
+                  <execution>
+                      <!-- Don't run the license checker in x-plugins -->
+                      <id>check-license</id>
+                      <phase>none</phase>
+                  </execution>
+              </executions>
+          </plugin>
+          <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-deploy-plugin</artifactId>
+              <configuration>
+                  <skip>${deploy.skip}</skip>
+              </configuration>
+          </plugin>
+        </plugins>
+      </pluginManagement>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>deploy-internal</id>
+            <distributionManagement>
+                <repository>
+                    <id>elasticsearch-internal-releases</id>
+                    <name>Elasticsearch Internal Releases</name>
+                    <url>http://maven.elasticsearch.org/artifactory/internal-releases</url>
+                </repository>
+                <snapshotRepository>
+                    <id>elasticsearch-internal-snapshots</id>
+                    <name>Elasticsearch Internal Snapshots</name>
+                    <url>http://maven.elasticsearch.org/artifactory/internal-snapshots</url>
+                </snapshotRepository>
+            </distributionManagement>
+        </profile>
+        <profile>
+            <id>deploy-public</id>
+            <properties>
+                <assembly.attach>false</assembly.attach>
+                <sources.attach>false</sources.attach>
+            </properties>
+            <distributionManagement>
+                <repository>
+                    <id>elasticsearch-public-releases</id>
+                    <name>Elasticsearch Public Releases</name>
+                    <url>http://maven.elasticsearch.org/artifactory/public-releases</url>
+                </repository>
+            </distributionManagement>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.elasticsearch.maven</groupId>
+                                <artifactId>attached-artifact-enforcer</artifactId>
+                                <version>1.0.0</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>check-attached-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <bannedAttachedArtifacts implementation="org.elasticsearch.enforcer.rules.BannedAttachedArtifacts">
+                                            <excludes>
+                                                <exclude>.*\.zip</exclude>
+                                                <exclude>.*-sources\.jar</exclude>
+                                            </excludes>
+                                        </bannedAttachedArtifacts>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>default</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <distributionManagement>
+                <!-- by doing this, we must always specify a profile when deploying and we will not inherit the
+                     the repositories from a parent, which could be a public repo that we do not want to deploy to. -->
+            </distributionManagement>
+        </profile>
+    </profiles>
+
+    <modules>
+        <module>elasticsearch/x-dev-tools</module>
+        <module>elasticsearch/license</module>
+        <module>elasticsearch/x-pack/shield</module>
+        <module>elasticsearch/x-pack/watcher</module>
+        <module>elasticsearch/x-pack/marvel</module>
+        <module>elasticsearch/x-pack/graph</module>
+        <module>elasticsearch/qa</module>
+    </modules>
+</project>

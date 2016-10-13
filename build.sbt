@@ -21,8 +21,7 @@ lazy val testkit = Project("elastic4s-testkit", file("elastic4s-testkit"))
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % ScalatestVersion,
       "org.elasticsearch.module" % "lang-groovy" % ElasticsearchVersion,
-      "org.elasticsearch" % "elasticsearch" % ElasticsearchVersion classifier "tests",
-      "org.elasticsearch.plugin" % "shield" % ElasticsearchVersion
+      "org.elasticsearch" % "elasticsearch" % ElasticsearchVersion classifier "tests"
     )
   )
   .dependsOn(core)
@@ -72,4 +71,8 @@ lazy val json4s = Project("elastic4s-json4s", file("elastic4s-json4s"))
 lazy val examples = Project("elastic4s-examples", file("elastic4s-examples"))
   .settings(publish := {})
   .settings(name := "elastic4s-examples")
+  .settings(
+    libraryDependencies += "org.elasticsearch.plugin" % "shield" % ElasticsearchVersion
+  )
   .dependsOn(core, jackson, streams)
+
