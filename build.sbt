@@ -22,7 +22,7 @@ lazy val testkit = Project("elastic4s-testkit", file("elastic4s-testkit"))
       "org.scalatest" %% "scalatest" % ScalatestVersion,
       "org.elasticsearch.module" % "lang-groovy" % ElasticsearchVersion,
       "org.elasticsearch" % "elasticsearch" % ElasticsearchVersion classifier "tests",
-      "org.elasticsearch.plugin" % "shield" % ElasticsearchVersion classifier "tests"
+      "org.elasticsearch.plugin" % "shield" % ElasticsearchVersion
     )
   )
   .dependsOn(core)
