@@ -10,8 +10,6 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.index.query.QueryBuilders;
 
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.shield.ShieldPlugin;
 
 
@@ -42,6 +40,10 @@ public class ESRemoteTest {
                     .execute()
                     .actionGet();
 
+            /**
+             * Extracting hits data
+             * http://www.programcreek.com/java-api-examples/index.php?api=org.elasticsearch.search.SearchHit
+             */
             System.out.println("done search" + response.getHits());
             for (org.elasticsearch.search.SearchHit hit : response.getHits().hits()) {
                 final Map<String, Object> fields = hit.getSource();
