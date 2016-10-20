@@ -12,7 +12,7 @@ import org.elasticsearch.index.query.{MatchQueryBuilder, RegexpFlag, SimpleQuery
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval
 import org.elasticsearch.search.aggregations.bucket.terms.Terms
 import org.elasticsearch.search.sort.SortOrder
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, OneInstancePerTest}
 
 /** @author Stephen Samuel */

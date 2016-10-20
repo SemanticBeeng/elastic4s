@@ -1,7 +1,7 @@
 package com.sksamuel.elastic4s
 
 import org.scalatest.{ FlatSpec, OneInstancePerTest }
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import ElasticDsl._
 
 /** @author Stephen Samuel */

@@ -3,7 +3,7 @@ package com.sksamuel.elastic4s
 import com.sksamuel.elastic4s.ElasticDsl._
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse
 import org.scalatest.{Matchers, FlatSpec}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 
 import scala.collection.JavaConversions._
 import com.sksamuel.elastic4s.testkit.ElasticSugar

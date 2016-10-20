@@ -1,7 +1,7 @@
 package com.sksamuel.elastic4s
 
 import org.scalatest.FlatSpec
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import ElasticDsl._
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import com.sksamuel.elastic4s.testkit.ElasticSugar

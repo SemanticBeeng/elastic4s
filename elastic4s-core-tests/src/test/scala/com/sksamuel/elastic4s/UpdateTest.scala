@@ -5,7 +5,7 @@ import com.sksamuel.elastic4s.testkit.ElasticSugar
 import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{Matchers, FlatSpec}
 import org.scalatest.concurrent.Eventually
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 
 import scala.concurrent.duration._
 

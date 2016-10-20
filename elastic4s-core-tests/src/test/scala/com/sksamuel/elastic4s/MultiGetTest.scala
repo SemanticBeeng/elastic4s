@@ -5,7 +5,7 @@ import com.sksamuel.elastic4s.testkit.ElasticSugar
 import org.elasticsearch.index.VersionType
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers._
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 
 import scala.collection.JavaConverters._
 

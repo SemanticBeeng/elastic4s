@@ -3,7 +3,7 @@ package com.sksamuel.elastic4s
 import com.sksamuel.elastic4s.mappings.FieldType.StringType
 import com.sksamuel.elastic4s.testkit.ElasticSugar
 import org.scalatest.FreeSpec
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 
 
 /** @author Stephen Samuel */

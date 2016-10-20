@@ -7,7 +7,7 @@ import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.action.WriteConsistencyLevel
 import org.scalactic.TypeCheckedTripleEquals
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Entry, FlatSpec, Matchers, OneInstancePerTest}
 
 /** @author Stephen Samuel */

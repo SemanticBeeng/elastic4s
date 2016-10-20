@@ -6,7 +6,7 @@ import com.sksamuel.elastic4s.analyzers.StandardAnalyzerDefinition
 import com.sksamuel.elastic4s.testkit.ElasticSugar
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.mappings.FieldType.StringType
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 
 /** @author Stephen Samuel */

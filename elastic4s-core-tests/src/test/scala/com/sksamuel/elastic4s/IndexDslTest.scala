@@ -1,7 +1,7 @@
 package com.sksamuel.elastic4s
 
 import org.scalatest.{ Matchers, FlatSpec, OneInstancePerTest }
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import ElasticDsl._
 import org.elasticsearch.common.xcontent.XContentBuilder
 import java.util.{ Calendar, GregorianCalendar, Date }

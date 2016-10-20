@@ -4,7 +4,7 @@ import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.testkit.ElasticSugar
 import org.elasticsearch.search.fetch.source.FetchSourceContext
 import org.scalatest.{WordSpec, Matchers, FlatSpec}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 
 /** @author Stephen Samuel */
 class ExplainDslTest extends WordSpec with MockitoSugar with ElasticSugar with Matchers {
