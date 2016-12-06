@@ -1,215 +1,165 @@
 package com.sksamuel.elastic4s
 
-import java.util.UUID
-
-import com.sksamuel.elastic4s.admin.{OpenIndexDefinition, TypesExistsDefinition, RefreshIndexDefinition, IndicesStatsDefinition, IndexExistsDefinition, GetSegmentsDefinition, GetTemplateDefinition, FlushIndexDefinition, DeleteIndexTemplateDefinition, FieldStatsDefinition, ClusterStatsDefinition, ClusterHealthDefinition, ClusterStateDefinition, ClusterSettingsDefinition, CloseIndexDefinition, ClearCacheDefinition, ClusterDsl, SnapshotDsl, IndexTemplateDsl, IndexAdminDsl, FieldStatsDsl}
-import com.sksamuel.elastic4s.analyzers.{TokenFilterDsl, TokenizerDsl, AnalyzerDsl}
-import com.sksamuel.elastic4s.mappings.FieldType.{ObjectType, NestedType, TokenCountType, StringType, ShortType, LongType, IpType, IntegerType, GeoShapeType, DateType, DoubleType, GeoPointType, MultiFieldType, FloatType, CompletionType, BooleanType, ByteType, BinaryType, AttachmentType}
+import com.sksamuel.elastic4s.admin._
+import com.sksamuel.elastic4s.alias.{AliasesDsl, GetAliasDefinition}
+import com.sksamuel.elastic4s.analyzers.{AnalyzerDsl, CommonGramsTokenFilter, EdgeNGramTokenFilter, NGramTokenFilter, ShingleTokenFilter, SnowballTokenFilter, StemmerTokenFilter, TokenFilterDsl, TokenizerDsl}
+import com.sksamuel.elastic4s.bulk.BulkDsl
+import com.sksamuel.elastic4s.delete.DeleteDsl
+import com.sksamuel.elastic4s.explain.{ExplainDefinition, ExplainDsl}
+import com.sksamuel.elastic4s.get.{GetDsl, MultiGetApi}
+import com.sksamuel.elastic4s.indexes.{CreateIndexDefinition, CreateIndexDsl, DeleteIndexDefinition, DeleteIndexDsl, IndexDefinition, IndexDsl}
+import com.sksamuel.elastic4s.mappings.FieldType._
 import com.sksamuel.elastic4s.mappings._
+import com.sksamuel.elastic4s.reindex.ReindexDsl
+import com.sksamuel.elastic4s.script.{ScriptDefinition, ScriptDsl, ScriptFieldDefinition}
+import com.sksamuel.elastic4s.searches.queries.{FuzzyQueryDefinition, IdQueryDefinition, IndicesQueryDefinition, InnerHitDefinition}
+import com.sksamuel.elastic4s.searches.queries.funcscorer.ScoreDsl
+import com.sksamuel.elastic4s.searches.suggestions.SuggestionDsl
+import com.sksamuel.elastic4s.searches._
+import com.sksamuel.elastic4s.searches.aggs._
+import com.sksamuel.elastic4s.searches.aggs.pipeline.PipelineAggregationDsl
+import com.sksamuel.elastic4s.searches.highlighting.HighlightFieldDefinition
+import com.sksamuel.elastic4s.searches.sort.{FieldSortDefinition, ScoreSortDefinition, SortDsl}
+import com.sksamuel.elastic4s.task.TaskApi
+import com.sksamuel.elastic4s.termvectors.TermVectorDsl
+import com.sksamuel.elastic4s.update.UpdateDsl
+import com.sksamuel.elastic4s.validate.ValidateDsl
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.language.implicitConversions
 
-/** @author Stephen Samuel */
 trait ElasticDsl
-  extends IndexDsl
-  with AggregationDsl
-  with AliasesDsl
-  with AnalyzerDsl
-  with BulkDsl
-  with ClusterDsl
-  with CountDsl
-  with CreateIndexDsl
-  with DeleteIndexDsl
-  with DeleteDsl
-  with ExplainDsl
-  with FieldStatsDsl
-  with ForceMergeDsl
-  with GetDsl
-  with IndexAdminDsl
-  with IndexRecoveryDsl
-  with IndexTemplateDsl
-  with MappingDsl
+  extends AliasesDsl
+    with AggregationDsl
+    with AnalyzerDsl
+    with BulkDsl
+    with ClusterDsl
+    with CreateIndexDsl
+    with DeleteIndexDsl
+    with DeleteDsl
+    with DynamicTemplateDsl
+    with ExplainDsl
+    with FieldStatsDsl
+    with ForceMergeDsl
+    with GetDsl
+    with IndexDsl
+    with IndexAdminDsl
+    with IndexRecoveryDsl
+    with IndexTemplateDsl
+    with MappingDsl
     with MultiGetApi
-  with PercolateDsl
-  with PipelineAggregationDsl
-  with ReindexDsl
-  with ScriptDsl
-  with SearchDsl
-  with SettingsDsl
-  with ScoreDsl
-  with ScrollDsl
-  with SnapshotDsl
+    with PercolateDsl
+    with PipelineAggregationDsl
+    with ReindexDsl
+    with ScriptDsl
+    with SearchDsl
+    with SettingsDsl
+    with ScoreDsl
+    with ScrollDsl
+    with SortDsl
+    with SnapshotDsl
+    with SuggestionDsl
     with TaskApi
-    with TermVectorApi
-  with TokenizerDsl
-  with TokenFilterDsl
-  with UpdateDsl
-  with ValidateDsl
-  with DeprecatedElasticDsl
-  with ElasticImplicits {
+    with TermVectorDsl
+    with TokenizerDsl
+    with TokenFilterDsl
+    with UpdateDsl
+    with ValidateDsl
+    with ElasticImplicits {
 
-  case object add {
-    def alias(alias: String): AddAliasExpectsIndex = {
-      require(alias.nonEmpty, "alias name must not be null or empty")
-      new AddAliasExpectsIndex(alias)
-    }
-  }
-  def addAlias(name: String): AddAliasExpectsIndex = add alias name
-
-  def aliases(aliasMutations: MutateAliasDefinition*): IndicesAliasesRequestDefinition = aliases(aliasMutations)
-  def aliases(aliasMutations: Iterable[MutateAliasDefinition]): IndicesAliasesRequestDefinition = {
-    IndicesAliasesRequestDefinition(aliasMutations.toSeq: _*)
-  }
-
+  @deprecated("Use xxxAggregation(...) methods", "5.0.0")
   def agg = aggregation
+
+  @deprecated("Use xxxAggregation(...) methods", "5.0.0")
   case object aggregation {
+
     def avg(name: String) = AvgAggregationDefinition(name)
-    def children(name: String) = ChildrenAggregationDefinition(name)
-    def count(name: String) = ValueCountAggregationDefinition(name)
-    def cardinality(name: String) = CardinalityAggregationDefinition(name)
-    def datehistogram(name: String) = DateHistogramAggregation(name)
-    def daterange(name: String) = DateRangeAggregation(name)
-    def extendedstats(name: String) = ExtendedStatsAggregationDefinition(name)
-    def filter(name: String) = FilterAggregationDefinition(name)
-    def filters(name: String) = FiltersAggregationDefinition(name)
-    def geobounds(name: String) = GeoBoundsAggregationDefinition(name)
-    def geodistance(name: String) = GeoDistanceAggregationDefinition(name)
-    def geohash(name: String) = GeoHashGridAggregationDefinition(name)
-    def global(name: String) = GlobalAggregationDefinition(name)
-    def histogram(name: String) = HistogramAggregation(name)
-    def ipRange(name: String) = IpRangeAggregationDefinition(name)
-    def max(name: String) = MaxAggregationDefinition(name)
-    def min(name: String) = MinAggregationDefinition(name)
-    def missing(name: String) = MissingAggregationDefinition(name)
-    def nested(name: String) = NestedAggregationDefinition(name)
-    def reverseNested(name: String) = ReverseNestedAggregationDefinition(name)
-    def percentiles(name: String) = PercentilesAggregationDefinition(name)
-    def percentileranks(name: String) = PercentileRanksAggregationDefinition(name)
-    def range(name: String) = RangeAggregationDefinition(name)
-    def scriptedMetric(name: String) = ScriptedMetricAggregationDefinition(name)
-    def sigTerms(name: String) = SigTermsAggregationDefinition(name)
-    def stats(name: String) = StatsAggregationDefinition(name)
-    def sum(name: String) = SumAggregationDefinition(name)
-    def terms(name: String) = TermAggregationDefinition(name)
-    def topHits(name: String) =  TopHitsAggregationDefinition(name)
-  }
 
-  case object clear {
-    def cache(indexes: Iterable[String]): ClearCacheDefinition = ClearCacheDefinition(indexes.toSeq)
-    def cache(first: String, rest: String*): ClearCacheDefinition = clearCache(first +: rest)
-    def scroll(id: String, ids: String*): ClearScrollDefinition = clearScroll(id +: ids)
-    def scroll(ids: Iterable[String]): ClearScrollDefinition = clearScroll(ids)
-  }
+    @deprecated("Use valueCountAggregation(...)", "5.0.0")
+    def count(name: String) = valueCountAggregation(name)
 
-  def clearCache(first: String, rest: String*): ClearCacheDefinition = clearCache(first +: rest)
-  def clearCache(indexes: Iterable[String]): ClearCacheDefinition = ClearCacheDefinition(indexes.toSeq)
-  def clearIndex(indexes: String*): ClearCacheDefinition = ClearCacheDefinition(indexes)
-  def clearIndex(indexes: Iterable[String]): ClearCacheDefinition = ClearCacheDefinition(indexes.toSeq)
-  def clearScroll(id: String, ids: String*): ClearScrollDefinition = ClearScrollDefinition(id +: ids)
-  def clearScroll(ids: Iterable[String]): ClearScrollDefinition = ClearScrollDefinition(ids.toSeq)
+    @deprecated("Use cardinalityAggregation(...)", "5.0.0")
+    def cardinality(name: String) = cardinalityAggregation(name)
 
-  case object close {
-    def index(index: String): CloseIndexDefinition = CloseIndexDefinition(index)
-  }
+    @deprecated("Use dateHistogramAggregation(...)", "5.0.0")
+    def datehistogram(name: String) = dateHistogramAggregation(name)
 
-  def closeIndex(index: String): CloseIndexDefinition = close index index
+    @deprecated("Use dateRangeAggregation(...)", "5.0.0")
+    def daterange(name: String) = dateRangeAggregation(name)
 
-  case object cluster {
-    def persistentSettings(settings: Map[String, String]) = ClusterSettingsDefinition(settings, Map.empty)
-    def transientSettings(settings: Map[String, String]) = ClusterSettingsDefinition(Map.empty, settings)
-  }
+    @deprecated("Use extendedStatsAggregation(...)", "5.0.0")
+    def extendedstats(name: String) = extendedStatsAggregation(name)
 
-  def clusterPersistentSettings(settings: Map[String, String]) = cluster persistentSettings settings
-  def clusterTransientSettings(settings: Map[String, String]) = cluster transientSettings settings
+    @deprecated("Use filterAggregation(...)", "5.0.0")
+    def filter(name: String) = filterAggregation(name)
 
-  def clusterState = new ClusterStateDefinition
-  def clusterHealth = new ClusterHealthDefinition()
-  def clusterStats = new ClusterStatsDefinition
-  @deprecated("use clusterStats", "1.6.1")
-  def clusterStatus = new ClusterStatsDefinition
-  def clusterHealth(indices: String*) = new ClusterHealthDefinition(indices: _*)
+    @deprecated("Use filtersAggregation(...)", "5.0.0")
+    def filters(name: String) = filtersAggregation(name)
 
-  case object completion {
-    def suggestion(name: String) = CompletionSuggestionDefinition(name)
-  }
-  def completionSuggestion: CompletionSuggestionDefinition = completion suggestion UUID.randomUUID.toString
-  def completionSuggestion(name: String): CompletionSuggestionDefinition = completion suggestion name
+    @deprecated("Use geoBoundsAggregation(...)", "5.0.0")
+    def geobounds(name: String) = geoBoundsAggregation(name)
 
-  @deprecated("Count api is deprecated in favour of search with a size of 0", "2.1.0")
-  case object count {
-    def from(index: String): CountDefinition = CountDefinition(IndexesAndTypes(index))
-    @deprecated("Count api is deprecated in favour of search with a size of 0", "2.1.0")
-    def from(indexes: String*): CountDefinition = CountDefinition(IndexesAndTypes(indexes))
-    @deprecated("Count api is deprecated in favour of search with a size of 0", "2.1.0")
-    def from(indexesAndTypes: IndexesAndTypes): CountDefinition = CountDefinition(indexesAndTypes)
-  }
+    @deprecated("Use geoDistanceAggregation(...)", "5.0.0")
+    def geodistance(name: String) = geoDistanceAggregation(name)
 
-  @deprecated("Count api is deprecated in favour of search with a size of 0", "2.1.0")
-  def countFrom(index: String): CountDefinition = CountDefinition(IndexesAndTypes(index))
-  @deprecated("Count api is deprecated in favour of search with a size of 0", "2.1.0")
-  def countFrom(indexes: String*): CountDefinition = CountDefinition(IndexesAndTypes(indexes))
-  @deprecated("Count api is deprecated in favour of search with a size of 0", "2.1.0")
-  def countFrom(indexesAndTypes: IndexesAndTypes): CountDefinition = CountDefinition(indexesAndTypes)
+    @deprecated("Use geoHashGridAggregation(...)", "5.0.0")
+    def geohash(name: String) = geoHashGridAggregation(name)
 
-  case object create {
+    @deprecated("Use globalAggregation(...)", "5.0.0")
+    def global(name: String) = globalAggregation(name)
 
-    def index(name: String) = {
-      require(name.nonEmpty, "index name must not be null or empty")
-      CreateIndexDefinition(name)
+    @deprecated("Use histogramAggregation(...)", "5.0.0")
+    def histogram(name: String) = histogramAggregation(name)
+
+    @deprecated("Use ipRangeAggregation(...)", "5.0.0")
+    def ipRange(name: String) = ipRangeAggregation(name)
+
+    @deprecated("Use maxAggregation(...)", "5.0.0")
+    def max(name: String) = maxAggregation(name)
+
+    @deprecated("Use minAggregation(...)", "5.0.0")
+    def min(name: String) = minAggregation(name)
+
+    @deprecated("Use nestedAggregation(...)", "5.0.0")
+    def nested(name: String) = new {
+      def path(path: String) = nestedAggregation(name, path)
     }
 
-    def snapshot(name: String) = {
-      require(name.nonEmpty, "snapshot name must not be null or empty")
-      new CreateSnapshotExpectsIn(name)
-    }
+    @deprecated("Use missingAggregation(...)", "5.0.0")
+    def missing(name: String) = missingAggregation(name)
 
-    def repository(name: String): CreateRepositoryExpectsType = {
-      require(name.nonEmpty, "repository name must not be null or empty")
-      new CreateRepositoryExpectsType(name)
-    }
+    @deprecated("Use reverseNestedAggregation(...)", "5.0.0")
+    def reverseNested(name: String) = reverseNestedAggregation(name)
 
-    def template(name: String): CreateIndexTemplateExpectsPattern = {
-      require(name.nonEmpty, "template name must not be null or empty")
-      new CreateIndexTemplateExpectsPattern(name)
-    }
-  }
-  def createIndex(name: String) = create index name
-  def createSnapshot(name: String) = create snapshot name
-  def createRepository(name: String) = create repository name
-  def createTemplate(name: String) = create template name
+    @deprecated("Use percentilesAggregation(...)", "5.0.0")
+    def percentiles(name: String) = percentilesAggregation(name)
 
-  case object delete {
-    def id(id: Any): DeleteByIdExpectsFrom = new DeleteByIdExpectsFrom(id)
-    def index(indexes: String*): DeleteIndexDefinition = index(indexes)
-    def index(indexes: Iterable[String]): DeleteIndexDefinition = DeleteIndexDefinition(indexes.toSeq)
-    def snapshot(name: String): DeleteSnapshotExpectsIn = new DeleteSnapshotExpectsIn(name)
-    def template(name: String) = DeleteIndexTemplateDefinition(name)
-  }
+    @deprecated("Use percentileRanksAggregation(...)", "5.0.0")
+    def percentileranks(name: String) = percentileRanksAggregation(name)
 
-  def delete(id: Any): DeleteByIdExpectsFrom = new DeleteByIdExpectsFrom(id)
+    @deprecated("Use rangeAggregation(...)", "5.0.0")
+    def range(name: String) = rangeAggregation(name)
 
-  def deleteIndex(indexes: String*): DeleteIndexDefinition = deleteIndex(indexes)
-  def deleteIndex(indexes: Iterable[String]): DeleteIndexDefinition = DeleteIndexDefinition(indexes.toSeq)
+    @deprecated("Use scriptedMetricAggregation(...)", "5.0.0")
+    def scriptedMetric(name: String) = scriptedMetricAggregation(name)
 
-  def deleteSnapshot(name: String): DeleteSnapshotExpectsIn = delete snapshot name
-  def deleteTemplate(name: String): DeleteIndexTemplateDefinition = delete template name
+    @deprecated("Use sigTermsAggregation(...)", "5.0.0")
+    def sigTerms(name: String) = sigTermsAggregation(name)
 
-  case object explain {
-    def id(id: String): ExplainExpectsIndex = new ExplainExpectsIndex(id)
+    @deprecated("Use statsAggregation(...)", "5.0.0")
+    def stats(name: String) = statsAggregation(name)
+
+    @deprecated("Use sumAggregation(...)", "5.0.0")
+    def sum(name: String) = sumAggregation(name)
+
+    @deprecated("Use termsAggregation(...)", "5.0.0")
+    def terms(name: String) = termsAggregation(name)
+
+    @deprecated("Use topHitsAggregation(...)", "5.0.0")
+    def topHits(name: String) = topHitsAggregation(name)
   }
 
-  def explain(index: String, `type`: String, id: String) = ExplainDefinition(index, `type`, id)
-
-  case object field extends TypeableFields {
-    val name = ""
-    def name(name: String): FieldDefinition = FieldDefinition(name)
-    def sort(field: String): FieldSortDefinition = FieldSortDefinition(field)
-    def stats(fields: String*): FieldStatsDefinition = FieldStatsDefinition(fields = fields)
-    def stats(fields: Iterable[String]): FieldStatsDefinition = FieldStatsDefinition(fields = fields.toSeq)
-  }
-
+  @deprecated("use field(name, type)", "5.0.0")
   def field(name: String): FieldDefinition = FieldDefinition(name)
   def field(name: String, ft: AttachmentType.type) = new AttachmentFieldDefinition(name)
   def field(name: String, ft: BinaryType.type) = new BinaryFieldDefinition(name)
@@ -223,150 +173,150 @@ trait ElasticDsl
   def field(name: String, ft: GeoShapeType.type) = new GeoShapeFieldDefinition(name)
   def field(name: String, ft: IntegerType.type) = new IntegerFieldDefinition(name)
   def field(name: String, ft: IpType.type) = new IpFieldDefinition(name)
+  def field(name: String, ft: KeywordType.type) = new KeywordFieldDefinition(name)
   def field(name: String, ft: LongType.type) = new LongFieldDefinition(name)
   def field(name: String, ft: MultiFieldType.type) = new MultiFieldDefinition(name)
   def field(name: String, ft: NestedType.type): NestedFieldDefinition = new NestedFieldDefinition(name)
   def field(name: String, ft: ObjectType.type): ObjectFieldDefinition = new ObjectFieldDefinition(name)
+  def field(name: String, ft: PercolatorType.type): PercolatorFieldDefinition = new PercolatorFieldDefinition(name)
   def field(name: String, ft: ShortType.type) = new ShortFieldDefinition(name)
-  def field(name: String, ft: StringType.type) = new StringFieldDefinition(name)
+  def field(name: String, ft: TextType.type) = new TextFieldDefinition(name)
   def field(name: String, ft: TokenCountType.type) = new TokenCountDefinition(name)
 
-  def fieldStats(fields: String*): FieldStatsDefinition = FieldStatsDefinition(fields = fields)
-  def fieldStats(fields: Iterable[String]): FieldStatsDefinition = FieldStatsDefinition(fields = fields.toSeq)
-  def fieldSort(field: String) = FieldSortDefinition(field)
+  @deprecated("string type is deprecated in ES 5, use text or keyword types", "5.0.0")
+  def field(name: String, ft: StringType.type) = new StringFieldDefinition(name)
 
-  case object flush {
-    def index(indexes: Iterable[String]): FlushIndexDefinition = FlushIndexDefinition(indexes.toSeq)
-    def index(indexes: String*): FlushIndexDefinition = FlushIndexDefinition(indexes)
+  def innerHit(name: String): InnerHitDefinition = InnerHitDefinition(name)
+
+  // -- helper methods to create the field definitions --
+  def attachmentField(name: String) = field(name, AttachmentType)
+  def binaryField(name: String) = field(name, BinaryType)
+  def booleanField(name: String) = field(name, BooleanType)
+  def byteField(name: String) = field(name, ByteType)
+  def completionField(name: String) = field(name, CompletionType)
+  def dateField(name: String) = field(name, DateType)
+  def doubleField(name: String) = field(name, DoubleType)
+  def floatField(name: String) = field(name, FloatType)
+  def geopointField(name: String) = field(name, GeoPointType)
+  def geoshapeField(name: String) = field(name, GeoShapeType)
+  def multiField(name: String) = field(name, MultiFieldType)
+  def nestedField(name: String): NestedFieldDefinition = field(name).typed(NestedType)
+  def objectField(name: String): ObjectFieldDefinition = field(name).typed(ObjectType)
+  def intField(name: String) = field(name, IntegerType)
+  def ipField(name: String) = field(name, IpType)
+
+  def keywordField(name: String) = field(name, KeywordType)
+
+  def longField(name: String) = field(name, LongType)
+
+  def percolatorField(name: String) = field(name, PercolatorType)
+
+  def scriptField(n: String): ExpectsScript = ExpectsScript(field = n)
+  def scriptField(name: String, script: String): ScriptFieldDefinition = ScriptFieldDefinition(name, script, None, None)
+  def shortField(name: String) = field(name, ShortType)
+
+  @deprecated("string type is deprecated in ES 5, use text or keyword types", "5.0.0")
+  def stringField(name: String): StringFieldDefinition = field(name, StringType)
+
+  def textField(name: String): TextFieldDefinition = field(name, TextType)
+  def tokenCountField(name: String) = field(name).typed(TokenCountType)
+
+  def timestamp(en: Boolean): TimestampDefinition = TimestampDefinition(en)
+
+  implicit class RichFuture[T](future: Future[T]) {
+    def await(implicit duration: Duration = 10.seconds): T = Await.result(future, duration)
   }
 
-  def flushIndex(indexes: Iterable[String]): FlushIndexDefinition = flush index indexes
-  def flushIndex(indexes: String*): FlushIndexDefinition = flush index indexes
-
-  case object fuzzyCompletion {
-    def suggestion(name: String) = FuzzyCompletionSuggestionDefinition(name)
-  }
-  def fuzzyCompletionSuggestion: FuzzyCompletionSuggestionDefinition = {
-    fuzzyCompletionSuggestion(UUID.randomUUID.toString)
-  }
-  def fuzzyCompletionSuggestion(name: String): FuzzyCompletionSuggestionDefinition = fuzzyCompletion suggestion name
-
-  case object geo {
-    def sort(field: String): GeoDistanceSortDefinition = new GeoDistanceSortDefinition(field)
-  }
-  def geoSort(name: String): GeoDistanceSortDefinition = geo sort name
-
-  case object get {
-
-    def id(id: Any) = {
-      require(id.toString.nonEmpty, "id must not be null or empty")
-      new GetWithIdExpectsFrom(id.toString)
-    }
-
-    def alias(aliases: String*): GetAliasDefinition = GetAliasDefinition(aliases)
-
-    def cluster(stats: StatsKeyword): ClusterStatsDefinition = new ClusterStatsDefinition
-    def cluster(health: HealthKeyword): ClusterHealthDefinition = new ClusterHealthDefinition
-
-    def mapping(it: IndexesAndTypes): GetMappingDefinition = GetMappingDefinition(it)
-
-    def segments(indexes: Indexes): GetSegmentsDefinition = getSegments(indexes)
-    def segments(first: String, rest: String*): GetSegmentsDefinition = getSegments(first +: rest)
-
-    def settings(indexes: Indexes): GetSettingsDefinition = GetSettingsDefinition(indexes)
-
-    def template(name: String): GetTemplateDefinition = GetTemplateDefinition(name)
-
-    def snapshot(names: Iterable[String]): GetSnapshotsExpectsFrom = new GetSnapshotsExpectsFrom(names.toSeq)
-    def snapshot(names: String*): GetSnapshotsExpectsFrom = snapshot(names)
+  case object add {
+    @deprecated("Use full method syntax, eg addAlias()", "5.0.0")
+    def alias(alias: String) = addAlias(alias)
   }
 
-  def get(id: Any): GetWithIdExpectsFrom = new GetWithIdExpectsFrom(id.toString)
-  def getAlias(first: String, rest: String*): GetAliasDefinition = GetAliasDefinition(first +: rest)
-  def getAlias(aliases: Iterable[String]): GetAliasDefinition = GetAliasDefinition(aliases.toSeq)
-  def getMapping(ixTp: IndexAndTypes): GetMappingDefinition = GetMappingDefinition(IndexesAndTypes(ixTp))
+  case object update {
+    @deprecated("use update(id)", "5.0.0")
+    def id(id: Any) = update(id)
 
-  def getSegments(indexes: Indexes): GetSegmentsDefinition = GetSegmentsDefinition(indexes)
-  def getSegments(first: String, rest: String*): GetSegmentsDefinition = getSegments(first +: rest)
-
-  def getSettings(indexes: Indexes): GetSettingsDefinition = get settings indexes
-
-  def getSnapshot(names: Iterable[String]): GetSnapshotsExpectsFrom = get snapshot names
-  def getSnapshot(names: String*): GetSnapshotsExpectsFrom = get snapshot names
-
-  def getTemplate(name: String): GetTemplateDefinition = get template name
-
-  trait HealthKeyword
-  case object health extends HealthKeyword
-
-  case object highlight {
-    def field(field: String): HighlightDefinition = HighlightDefinition(field)
-  }
-  def highlight(field: String): HighlightDefinition = HighlightDefinition(field)
-
-  trait StatsKeyword
-  case object stats extends StatsKeyword
-
-  case object index {
-
-    def exists(indexes: Iterable[String]): IndexExistsDefinition = IndexExistsDefinition(indexes.toSeq)
-    def exists(indexes: String*): IndexExistsDefinition = IndexExistsDefinition(indexes)
-
-    def into(indexType: IndexAndTypes): IndexDefinition = {
-      require(indexType != null, "indexType must not be null or empty")
-      new IndexDefinition(indexType.index, indexType.types.head)
-    }
-
-    def stats(indexes: Indexes): IndicesStatsDefinition = indexStats(indexes)
-    def stats(first: String, rest: String*): IndicesStatsDefinition = indexStats(first +: rest)
+    @deprecated("use updateSettings(index)", "5.0.0")
+    def settings(index: String): UpdateSettingsDefinition = updateSettings(index)
   }
 
-  def indexExists(indexes: Iterable[String]): IndexExistsDefinition = IndexExistsDefinition(indexes.toSeq)
-  def indexExists(indexes: String*): IndexExistsDefinition = IndexExistsDefinition(indexes)
-
-  def indexInto(indexType: IndexAndTypes): IndexDefinition = {
-    require(indexType != null, "indexType must not be null or empty")
-    new IndexDefinition(indexType.index, indexType.types.head)
+  case object types {
+    @deprecated("use typesExist(types)", "5.0.0")
+    def exist(types: String*) = typesExist(types)
   }
 
-  def indexInto(index: String, `type`: String): IndexDefinition = {
-    require(index.nonEmpty, "index must not be null or empty")
-    new IndexDefinition(index, `type`)
+  case object restore {
+    @deprecated("use restoreSnapshot(name)", "5.0.0")
+    def snapshot(name: String) = restoreSnapshot(name)
   }
 
-  def indexStats(indexes: Indexes): IndicesStatsDefinition = IndicesStatsDefinition(indexes)
-  def indexStats(first: String, rest: String*): IndicesStatsDefinition = indexStats(first +: rest)
-
-  case object inner {
-    def hits(name: String): QueryInnerHitsDefinition = QueryInnerHitsDefinition(name)
-    def hit(name: String): InnerHitDefinition = InnerHitDefinition(name)
+  case object search {
+    @deprecated("use search(index) or search(indexes/types)", "5.0.0")
+    def in(indexesTypes: IndexesAndTypes): SearchDefinition = SearchDefinition(indexesTypes)
+    @deprecated("use searchScroll(id)", "5.0.0")
+    def scroll(id: String): SearchScrollDefinition = SearchScrollDefinition(id)
   }
-  def innerHit(name: String): InnerHitDefinition = inner hit name
-  def innerHits(name: String): QueryInnerHitsDefinition = inner hits name
 
-  def listTasks(first: String, rest: String*): ListTasksDefinition = listTasks(first +: rest)
-  def listTasks(nodeIds: Seq[String]): ListTasksDefinition = ListTasksDefinition(nodeIds)
+  case object term {
+    @deprecated("use termSuggestion(name)", "5.0.0")
+    def suggestion(name: String) = termSuggestion(name)
+  }
 
-  def cancelTasks(first: String, rest: String*): CancelTasksDefinition = cancelTasks(first +: rest)
-  def cancelTasks(nodeIds: Seq[String]): CancelTasksDefinition = CancelTasksDefinition(nodeIds)
+  case object score {
+    @deprecated("use scoreSort()", "5.0.0")
+    def sort: ScoreSortDefinition = ScoreSortDefinition()
+  }
 
-  def pendingClusterTasks(local: Boolean): PendingClusterTasksDefinition = PendingClusterTasksDefinition(local)
+  @deprecated("use idsQuery", "2.0.0")
+  def ids(ids: Iterable[String]): IdQueryDefinition = IdQueryDefinition(ids.toSeq)
+
+  @deprecated("use idsQuery", "2.0.0")
+  def ids(ids: String*): IdQueryDefinition = IdQueryDefinition(ids.toSeq)
+
+  @deprecated("use putMapping(index)", "5.0.0")
+  case object put {
+    @deprecated("use putMapping(index)", "5.0.0")
+    def mapping(indexesAndType: IndexesAndType): PutMappingDefinition = new PutMappingDefinition(indexesAndType)
+  }
+
+  @deprecated("use phraseSuggestion(name)", "5.0.0")
+  case object phrase {
+    def suggestion(name: String) = phraseSuggestion(name)
+  }
+
+  case object remove {
+    @deprecated("Use dot syntax, eg removeAlias(alias", "5.0.0")
+    def alias(alias: String) = removeAlias(alias)
+  }
+
+  @deprecated("use recoverIndex(index)", "5.0.0")
+  case object recover {
+    @deprecated("use putMapping(index)", "5.0.0")
+    def index(indexes: Iterable[String]): IndexRecoveryDefinition = new IndexRecoveryDefinition(indexes.toSeq)
+    @deprecated("use putMapping(index)", "5.0.0")
+    def index(indexes: String*): IndexRecoveryDefinition = new IndexRecoveryDefinition(indexes)
+  }
+
+  @deprecated("use refreshIndex(index)", "5.0.0")
+  case object refresh {
+    @deprecated("use refreshIndex(index)", "5.0.0")
+    def index(indexes: Iterable[String]): RefreshIndexDefinition = RefreshIndexDefinition(indexes.toSeq)
+    @deprecated("use refreshIndex(index)", "5.0.0")
+    def index(indexes: String*): RefreshIndexDefinition = RefreshIndexDefinition(indexes)
+  }
 
   case object mapping {
+    @deprecated("use mapping(name)", "5.0.0")
     def name(name: String): MappingDefinition = {
       require(name.nonEmpty, "mapping name must not be null or empty")
       new MappingDefinition(name)
     }
   }
-  def mapping(name: String): MappingDefinition = mapping name name
 
-  def multiget(gets: Iterable[GetDefinition]): MultiGetDefinition = MultiGetDefinition(gets)
-  def multiget(gets: GetDefinition*): MultiGetDefinition = MultiGetDefinition(gets)
-
+  @deprecated("use openIndex(index)", "5.0.0")
   case object open {
     def index(index: String): OpenIndexDefinition = OpenIndexDefinition(index)
   }
-  def openIndex(index: String): OpenIndexDefinition = open index index
 
   @deprecated("elasticsearch has renamed this forceMerge", "2.1.0")
   case object optimize {
@@ -381,172 +331,254 @@ trait ElasticDsl
   @deprecated("elasticsearch has renamed this forceMerge", "2.1.0")
   def optimizeIndex(indexes: Iterable[String]): ForceMergeDefinition = ForceMergeDefinition(indexes.toSeq)
 
-  def forceMerge(first: String, rest: String*): ForceMergeDefinition = forceMerge(first +: rest)
-  def forceMerge(indexes: Iterable[String]): ForceMergeDefinition = ForceMergeDefinition(indexes.toSeq)
+  @deprecated("use commonQuery(field", "5.0.0")
+  def commonQuery = new CommonQueryExpectsField
 
-  case object percolate {
-    def in(indexType: IndexAndTypes): PercolateDefinition = PercolateDefinition(IndexesAndTypes(indexType))
+  class CommonQueryExpectsField {
+    def field(name: String) = new CommonQueryExpectsText(name)
   }
 
-  def percolateIn(indexType: IndexAndTypes): PercolateDefinition = percolateIn(IndexesAndTypes(indexType))
-  def percolateIn(indexesAndTypes: IndexesAndTypes): PercolateDefinition = PercolateDefinition(indexesAndTypes)
+  @deprecated("Fuzzy queries are not useful enough and will be removed in a future version", "5.0.0")
+  def fuzzyQuery(name: String, value: Any) = FuzzyQueryDefinition(name, value)
 
-  case object phrase {
-    def suggestion(name: String): PhraseSuggestionDefinition = PhraseSuggestionDefinition(name)
-  }
-  def phraseSuggestion: PhraseSuggestionDefinition = phrase suggestion UUID.randomUUID.toString
-  def phraseSuggestion(name: String): PhraseSuggestionDefinition = phrase suggestion name
-
-  case object put {
-    def mapping(indexesAndType: IndexesAndType): PutMappingDefinition = new PutMappingDefinition(indexesAndType)
-  }
-  def putMapping(indexesAndType: IndexesAndType): PutMappingDefinition = new PutMappingDefinition(indexesAndType)
-
-  case object recover {
-    def index(indexes: Iterable[String]): IndexRecoveryDefinition = new IndexRecoveryDefinition(indexes.toSeq)
-    def index(indexes: String*): IndexRecoveryDefinition = new IndexRecoveryDefinition(indexes)
-  }
-  def recoverIndex(indexes: String*): IndexRecoveryDefinition = recover index indexes
-  def recoverIndex(indexes: Iterable[String]): IndexRecoveryDefinition = recover index indexes
-
-  case object refresh {
-    def index(indexes: Iterable[String]): RefreshIndexDefinition = RefreshIndexDefinition(indexes.toSeq)
-    def index(indexes: String*): RefreshIndexDefinition = RefreshIndexDefinition(indexes)
+  @deprecated("instead search on the `_index` field", "5.0.0")
+  def indicesQuery(indices: String*) = new {
+    @deprecated("instead search on the `_index` field", "5.0.0")
+    def query(query: QueryDefinition) = IndicesQueryDefinition(indices, query)
   }
 
-  def refreshIndex(indexes: Iterable[String]): RefreshIndexDefinition = refresh index indexes
-  def refreshIndex(indexes: String*): RefreshIndexDefinition = refresh index indexes
-
-  case object remove {
-    def alias(alias: String): RemoveAliasExpectsIndex = {
-      require(alias.nonEmpty, "alias must not be null or empty")
-      new RemoveAliasExpectsIndex(alias)
-    }
+  @deprecated("prefer the method commonGramsTokenFilter(\"name\")", "2.0.0")
+  case object commonGrams {
+    @deprecated("prefer the method commonGramsTokenFilter(\"name\")", "2.0.0")
+    def tokenfilter(name: String): CommonGramsTokenFilter = CommonGramsTokenFilter(name)
   }
-  def removeAlias(alias: String): RemoveAliasExpectsIndex = remove alias alias
 
-  case object register {
-    def id(id: Any): RegisterExpectsIndex = {
-      require(id.toString.nonEmpty, "id must not be null or empty")
-      new RegisterExpectsIndex(id.toString)
-    }
+  @deprecated("prefer the method edgeNGramTokenFilter(\"name\")", "2.0.0")
+  case object edgeNGram {
+    @deprecated("prefer the method edgeNGramTokenFilter(\"name\")", "2.0.0")
+    def tokenfilter(name: String): EdgeNGramTokenFilter = EdgeNGramTokenFilter(name)
   }
-  def register(id: Any): RegisterExpectsIndex = register id id
+  @deprecated("prefer the method edgeNGramTokenFilter(\"name\") <-- note capitalization", "2.0.0")
+  def edgeNGramTokenfilter(name: String): EdgeNGramTokenFilter = EdgeNGramTokenFilter(name)
 
-  case object restore {
-    def snapshot(name: String): RestoreSnapshotExpectsFrom = {
-      require(name.nonEmpty, "snapshot name must not be null or empty")
-      new RestoreSnapshotExpectsFrom(name)
-    }
+  @deprecated("prefer the method ngramTokenFilter(\"name\")", "2.0.0")
+  case object ngram {
+    @deprecated("prefer the method ngramTokenFilter(\"name\")", "2.0.0")
+    def tokenfilter(name: String): NGramTokenFilter = NGramTokenFilter(name)
   }
-  def restoreSnapshot(name: String): RestoreSnapshotExpectsFrom = restore snapshot name
 
-  case object score {
-    def sort: ScoreSortDefinition = ScoreSortDefinition()
+  case object create {
+
+    @deprecated("use createIndex(name)", "5.0.0")
+    def index(name: String) = CreateIndexDefinition(name)
+
+    @deprecated("use createSnapshot(name)", "5.0.0")
+    def snapshot(name: String) = createSnapshot(name)
+
+    @deprecated("use createRepository(name)", "5.0.0")
+    def repository(name: String) = createRepository(name)
+
+    @deprecated("use createTemplate(name)", "5.0.0")
+    def template(name: String) = createTemplate(name)
   }
-  def scoreSort(): ScoreSortDefinition = ScoreSortDefinition()
+
+  case object delete {
+    @deprecated("use delete(id)", "5.0.0")
+    def id(id: Any): DeleteByIdExpectsFrom = new DeleteByIdExpectsFrom(id)
+
+    @deprecated("use deleteIndex(indexes)", "5.0.0")
+    def index(indexes: String*): DeleteIndexDefinition = deleteIndex(indexes)
+
+    @deprecated("use deleteIndex(indexes)", "5.0.0")
+    def index(indexes: Iterable[String]): DeleteIndexDefinition = DeleteIndexDefinition(indexes.toSeq)
+
+    @deprecated("use deleteSnapshot(name)", "5.0.0")
+    def snapshot(name: String) = deleteSnapshot(name)
+
+    @deprecated("use deleteTemplate(name)", "5.0.0")
+    def template(name: String) = DeleteIndexTemplateDefinition(name)
+  }
+
+  case object cluster {
+    @deprecated("use clusterPersistentSettings(settings)", "5.0.0")
+    def persistentSettings(settings: Map[String, String]) = ClusterSettingsDefinition(settings, Map.empty)
+    @deprecated("use clusterTransientSettings(settings)", "5.0.0")
+    def transientSettings(settings: Map[String, String]) = ClusterSettingsDefinition(Map.empty, settings)
+  }
 
   case object script {
+    @deprecated("use scriptSort(script).typed(ScriptSortType)", "5.0.0")
     def sort(script: ScriptDefinition) = scriptSort(script)
+    @deprecated("use scriptField(name)", "5.0.0")
     def field(n: String): ExpectsScript = ExpectsScript(field = n)
   }
 
-  def scriptSort(script: ScriptDefinition) = new {
-    def as(`type`: String): ScriptSortDefinition = typed(`type`)
-    def typed(`type`: String):ScriptSortDefinition = ScriptSortDefinition(script, `type`)
+  trait HealthKeyword
+  case object health extends HealthKeyword
+
+  trait StatsKeyword
+  case object stats extends StatsKeyword
+
+  case object highlight {
+    @deprecated("use highlight(field)", "5.0.0")
+    def field(field: String): HighlightFieldDefinition = HighlightFieldDefinition(field)
   }
 
-  case object search {
-    def in(indexesTypes: IndexesAndTypes): SearchDefinition = SearchDefinition(indexesTypes)
-    def scroll(id: String): SearchScrollDefinition = SearchScrollDefinition(id)
+  case object index {
+
+    @deprecated("use indexExists(indexes)", "5.0.0")
+    def exists(indexes: Iterable[String]): IndexExistsDefinition = IndexExistsDefinition(indexes.toSeq)
+
+    @deprecated("use indexExists(indexes)", "5.0.0")
+    def exists(indexes: String*): IndexExistsDefinition = IndexExistsDefinition(indexes)
+
+    @deprecated("use indexInto(index / type)", "5.0.0")
+    def into(indexType: IndexAndTypes): IndexDefinition = new IndexDefinition(indexType.index, indexType.types.head)
+
+    @deprecated("use indexStats(indexes)", "5.0.0")
+    def stats(indexes: Indexes): IndicesStatsDefinition = indexStats(indexes)
+
+    @deprecated("use indexStats(indexes)", "5.0.0")
+    def stats(first: String, rest: String*): IndicesStatsDefinition = indexStats(first +: rest)
   }
 
-  def search(indexType: IndexAndTypes): SearchDefinition = search in indexType
-  def search(indexes: String*): SearchDefinition = SearchDefinition(IndexesAndTypes(indexes))
-
-  def searchScroll(id: String): SearchScrollDefinition = SearchScrollDefinition(id)
-
-  // -- helper methods to create the field definitions --
-  def attachmentField(name: String) = field(name).typed(AttachmentType)
-  def binaryField(name: String) = field(name).typed(BinaryType)
-  def booleanField(name: String) = field(name).typed(BooleanType)
-  def byteField(name: String) = field(name).typed(ByteType)
-  def completionField(name: String) = field(name).typed(CompletionType)
-  def dateField(name: String) = field(name).typed(DateType)
-  def doubleField(name: String) = field(name, DoubleType)
-  def floatField(name: String) = field(name, FloatType)
-  def geopointField(name: String) = field(name, GeoPointType)
-  def geoshapeField(name: String) = field(name, GeoShapeType)
-  def multiField(name: String) = field(name, MultiFieldType)
-  def nestedField(name: String): NestedFieldDefinition = field(name).typed(NestedType)
-  def objectField(name: String): ObjectFieldDefinition = field(name).typed(ObjectType)
-  def intField(name: String) = field(name, IntegerType)
-  def ipField(name: String) = field(name, IpType)
-  def longField(name: String) = field(name, LongType)
-  def scriptField(n: String): ExpectsScript = ExpectsScript(field = n)
-  def scriptField(name: String, script: String): ScriptFieldDefinition = ScriptFieldDefinition(name, script, None, None)
-  def shortField(name: String) = field(name, ShortType)
-  def stringField(name: String): StringFieldDefinition = field(name, StringType)
-  def tokenCountField(name: String) = field(name).typed(TokenCountType)
-
-  def suggestions(suggestions: SuggestionDefinition*): SuggestDefinition = SuggestDefinition(suggestions)
-  def suggestions(suggestions: Iterable[SuggestionDefinition]): SuggestDefinition = SuggestDefinition(suggestions.toSeq)
-
-  def dynamicTemplate(name: String): DynamicTemplateExpectsMapping = new DynamicTemplateExpectsMapping(name)
-  def dynamicTemplate(name: String, mapping: TypedFieldDefinition): DynamicTemplateDefinition = {
-    DynamicTemplateDefinition(name, mapping)
+  case object flush {
+    @deprecated("use flushIndex(indexes)", "5.0.0")
+    def index(indexes: Iterable[String]): FlushIndexDefinition = FlushIndexDefinition(indexes.toSeq)
+    @deprecated("use flushIndex(indexes)", "5.0.0")
+    def index(indexes: String*): FlushIndexDefinition = FlushIndexDefinition(indexes)
   }
 
-  case object term {
-    def suggestion(name: String): TermSuggestionDefinition = TermSuggestionDefinition(name)
+  case object get {
+
+    @deprecated("use get(id)", "5.0.0")
+    def id(id: Any) = get(id)
+
+    @deprecated("use getAlias(alias)", "5.0.0")
+    def alias(aliases: String*): GetAliasDefinition = GetAliasDefinition(aliases)
+
+    @deprecated("use clusterStats()", "5.0.0")
+    def cluster(stats: StatsKeyword): ClusterStatsDefinition = new ClusterStatsDefinition
+
+    @deprecated("use clusterHealth()", "5.0.0")
+    def cluster(health: HealthKeyword): ClusterHealthDefinition = clusterHealth()
+
+    @deprecated("use getMapping(indexes)", "5.0.0")
+    def mapping(it: IndexesAndTypes): GetMappingDefinition = GetMappingDefinition(it)
+
+    @deprecated("use getSegments(indexes)", "5.0.0")
+    def segments(indexes: Indexes): GetSegmentsDefinition = getSegments(indexes)
+
+    @deprecated("use getSegments(indexes)", "5.0.0")
+    def segments(first: String, rest: String*): GetSegmentsDefinition = getSegments(first +: rest)
+
+    @deprecated("use getSettings(indexes)", "5.0.0")
+    def settings(indexes: Indexes): GetSettingsDefinition = GetSettingsDefinition(indexes)
+
+    @deprecated("use getTemplate(name)", "5.0.0")
+    def template(name: String): GetTemplateDefinition = GetTemplateDefinition(name)
+
+    @deprecated("use getSnapshot(names)", "5.0.0")
+    def snapshot(names: Iterable[String]) = getSnapshot(names.toSeq)
+
+    @deprecated("use getSnapshot(names)", "5.0.0")
+    def snapshot(names: String*) = getSnapshot(names)
   }
 
-  def termVectors(index: String, `type`: String, id: String): TermVectorsDefinition = {
-    TermVectorsDefinition(index / `type`, id)
+  case object close {
+    @deprecated("use closeIndex(index)", "5.0.0")
+    def index(index: String): CloseIndexDefinition = CloseIndexDefinition(index)
   }
-
-  def termSuggestion: TermSuggestionDefinition = term suggestion UUID.randomUUID.toString
-  def termSuggestion(name: String): TermSuggestionDefinition = term suggestion name
 
   case object timestamp {
+    @deprecated("use timestamp(boolean)", "5.0.0")
     def enabled(en: Boolean): TimestampDefinition = TimestampDefinition(en)
   }
-  def timestamp(en: Boolean): TimestampDefinition = TimestampDefinition(en)
 
-  case object types {
-    def exist(types: String*): TypesExistExpectsIn = TypesExistExpectsIn(types)
+  case object clear {
+    @deprecated("use clearCache(indexes)", "5.0.0")
+    def cache(indexes: Iterable[String]): ClearCacheDefinition = ClearCacheDefinition(indexes.toSeq)
+    @deprecated("use clearCache(indexes)", "5.0.0")
+    def cache(first: String, rest: String*): ClearCacheDefinition = clearCache(first +: rest)
+    @deprecated("use clearScroll(ids)", "5.0.0")
+    def scroll(id: String, ids: String*): ClearScrollDefinition = clearScroll(id +: ids)
+    @deprecated("use clearScroll(ids)", "5.0.0")
+    def scroll(ids: Iterable[String]): ClearScrollDefinition = clearScroll(ids)
   }
-  def typesExist(types: String*): TypesExistExpectsIn = TypesExistExpectsIn(types)
 
-  case object update {
-    def id(id: Any): UpdateExpectsIndex = {
-      require(id.toString.nonEmpty, "id must not be null or empty")
-      new UpdateExpectsIndex(id.toString)
+  case object completion {
+    @deprecated("use completionSuggestion(name)", "5.0.0")
+    def suggestion(name: String) = completionSuggestion(name)
+  }
+
+  case object explain {
+    @deprecated("Use explain(index, type, id", "5.0.0")
+    def id(id: String) = new {
+      def in(indexAndTypes: IndexAndTypes): ExplainDefinition = {
+        ExplainDefinition(indexAndTypes.index, indexAndTypes.types.head, id)
+      }
     }
-    def settings(index: String): UpdateSettingsDefinition = new UpdateSettingsDefinition(index)
   }
-  def update(id: Any): UpdateExpectsIndex = new UpdateExpectsIndex(id.toString)
+
+  @deprecated("prefer the method shingleTokenFilter(\"name\")", "2.0.0")
+  case object shingle {
+    @deprecated("prefer the method shingleTokenFilter(\"name\")", "2.0.0")
+    def tokenfilter(name: String): ShingleTokenFilter = ShingleTokenFilter(name)
+  }
+
+  @deprecated("prefer the method snowballTokenFilter(\"name\")", "2.0.0")
+  case object snowball {
+    @deprecated("prefer the method snowballTokenFilter(\"name\")", "2.0.0")
+    def tokenfilter(name: String): SnowballTokenFilter = SnowballTokenFilter(name)
+  }
+
+  case object field extends TypeableFields {
+    val name = ""
+
+    @deprecated("use field(name)", "5.0.0")
+    def name(name: String): FieldDefinition = FieldDefinition(name)
+
+    @deprecated("use fieldSort(field)", "5.0.0")
+    def sort(field: String): FieldSortDefinition = FieldSortDefinition(field)
+
+    @deprecated("use fieldStats(fields)", "5.0.0")
+    def stats(fields: String*): FieldStatsDefinition = FieldStatsDefinition(fields = fields)
+
+    @deprecated("use fieldStats(fields)", "5.0.0")
+    def stats(fields: Iterable[String]): FieldStatsDefinition = FieldStatsDefinition(fields = fields.toSeq)
+  }
+
+  @deprecated("use score sort, geo sort, field sort or script sort", "1.6.1")
+  case object sortby {
+    @deprecated("use score sort, geo sort, field sort or script sort", "1.6.1")
+    def score: ScoreSortDefinition = new ScoreSortDefinition
+
+    @deprecated("use score sort, geo sort, field sort or script sort", "1.6.1")
+    def field(field: String): FieldSortDefinition = FieldSortDefinition(field)
+
+    @deprecated("use score sort, geo sort, field sort or script sort", "1.6.1")
+    def script(script: ScriptDefinition) = scriptSort(script)
+  }
+
+  @deprecated("prefer the method stemmerTokenFilter(\"name\")", "2.0.0")
+  case object stemmer {
+    @deprecated("prefer the method stemmerTokenFilter(\"name\")", "2.0.0")
+    def tokenfilter(name: String): StemmerTokenFilter = StemmerTokenFilter(name)
+  }
 
   case object validate {
-    def in(indexType: IndexAndTypes): ValidateDefinition = ValidateDefinition(indexType.index, indexType.types.head)
-    def in(value: String): ValidateDefinition = {
-      require(value.nonEmpty, "value must not be null or empty")
-      in(IndexAndTypes(value))
-    }
-    def in(index: String, `type`: String): ValidateDefinition = ValidateDefinition(index, `type`)
-    def in(tuple: (String, String)): ValidateDefinition = ValidateDefinition(tuple._1, tuple._2)
+    @deprecated("use validateIn(index, type) or validateIn(index/type)", "5.0.0")
+    def in(indexType: IndexAndTypes): ValidateExpectsQuery = validateIn(indexType.toIndexesAndTypes)
+
+    @deprecated("use validateIn(index, type) or validateIn(index/type)", "5.0.0")
+    def in(value: String): ValidateExpectsQuery = validateIn(IndexesAndTypes(value))
+
+    @deprecated("use validateIn(index, type) or validateIn(index/type)", "5.0.0")
+    def in(index: String, `type`: String): ValidateExpectsQuery = validateIn(IndexesAndTypes(index, `type`))
+
+    @deprecated("use validateIn(index, type) or validateIn(index/type)", "5.0.0")
+    def in(tuple: (String, String)): ValidateExpectsQuery = validateIn(IndexesAndTypes(tuple))
   }
-
-  def validateIn(indexType: IndexAndTypes): ValidateDefinition = validate in indexType
-  def validateIn(value: String): ValidateDefinition = validate in value
-
-  implicit class RichFuture[T](future: Future[T]) {
-    def await(implicit duration: Duration = 10.seconds): T = Await.result(future, duration)
-  }
-}
-
-case class TypesExistExpectsIn(types: Seq[String]) {
-  def in(indexes: String*): TypesExistsDefinition = new TypesExistsDefinition(indexes, types)
 }
 
 object ElasticDsl extends ElasticDsl

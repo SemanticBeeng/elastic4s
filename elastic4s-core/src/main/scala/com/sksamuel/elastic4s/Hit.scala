@@ -1,33 +1,39 @@
 package com.sksamuel.elastic4s
 
-import org.scalactic.{ErrorMessage, Or}
+import com.sksamuel.exts.OptionImplicits._
+import org.elasticsearch.common.bytes.BytesReference
 
+import scala.collection.mutable
+
+/**
+  * A common trait for Get, MultiGet, Search and MultiSearch API results so that
+  * the HitReader typeclass can unmarshall results from any of those.
+  */
 trait Hit {
+
   def id: String
   def index: String
-
-  def source: Map[String, AnyRef]
-  def sourceAsBytes: Array[Byte]
-  def sourceAsString: String
-
-  def isExists: Boolean
-  def isEmpty: Boolean
-
   def `type`: String
   def version: Long
 
-  def field(name: String): HitField
-  def fieldOpt(name: String): Option[HitField]
-  def fields: Map[String, HitField]
-}
+  final def ref: DocumentRef = DocumentRef(index, `type`, id)
 
-trait HitField {
-  def name: String
-  def value: AnyRef
-  def values: Seq[AnyRef]
-  def isMetadataField: Boolean
-}
+  final def to[T: HitReader]: T = safeTo[T].fold(e => throw e, t => t)
+  final def safeTo[T](implicit reader: HitReader[T]): Either[Throwable, T] = reader.read(this)
 
-trait HitReader[T] {
-  def from(hit: Hit): T Or ErrorMessage
+  final def toOpt[T: HitReader]: Option[T] = if (exists) to[T].some else None
+  final def safeToOpt[T: HitReader]: Option[Either[Throwable, T]] = if (exists) safeTo[T].some else None
+
+  def sourceField(name: String): AnyRef = sourceAsMap(name)
+  def sourceFieldOpt(name: String): Option[AnyRef] = sourceAsMap.get(name)
+
+  def sourceAsMap: Map[String, AnyRef]
+  def sourceAsBytes: Array[Byte]
+  def sourceAsString: String
+  def sourceAsByteRef: BytesReference
+  def isSourceEmpty: Boolean
+
+  def sourceAsMutableMap: mutable.Map[String, AnyRef] = mutable.Map.apply(sourceAsMap.toSeq: _*)
+
+  def exists: Boolean
 }

@@ -1,8 +1,7 @@
 package com.sksamuel.elastic4s.analyzers
 
-import org.elasticsearch.common.xcontent.{XContentBuilder, XContentFactory}
+import org.elasticsearch.common.xcontent.XContentBuilder
 
-/** @author Stephen Samuel */
 abstract class Analyzer(val name: String)
 
 case object WhitespaceAnalyzer extends Analyzer("whitespace")
@@ -11,7 +10,10 @@ case object SimpleAnalyzer extends Analyzer("simple")
 case object StopAnalyzer extends Analyzer("stop")
 case object KeywordAnalyzer extends Analyzer("keyword")
 case object PatternAnalyzer extends Analyzer("pattern")
+
+@deprecated("Use the language-specific analyzer in modules/analysis instead", "5.0.0")
 case object SnowballAnalyzer extends Analyzer("snowball")
+
 case class CustomAnalyzer(override val name: String) extends Analyzer(name)
 
 abstract class LanguageAnalyzer(name: String) extends Analyzer(name: String)

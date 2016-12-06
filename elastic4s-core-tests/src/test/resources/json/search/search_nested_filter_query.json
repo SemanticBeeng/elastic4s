@@ -3,11 +3,17 @@
     "nested": {
       "query": {
         "term": {
-          "name": "chris"
+          "name": {
+            "value": "chris",
+            "boost": 1.0
+          }
         }
       },
       "path": "singer",
-      "_name": "namey"
+      "ignore_unmapped": false,
+      "score_mode": "min",
+      "boost": 1.0
     }
-  }
+  },
+  "ext": {}
 }

@@ -1,99 +1,112 @@
 package com.sksamuel.elastic4s
 
 import com.sksamuel.elastic4s.testkit.ElasticSugar
-import org.scalactic.{Bad, ErrorMessage, Good, Or}
-import org.scalatest.{Matchers, WordSpec}
+import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
+import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.mockito.MockitoSugar
 
-class HitReaderTest extends WordSpec with Matchers with ElasticSugar with JsonSugar {
+class HitReaderTest extends FlatSpec with MockitoSugar with ElasticSugar with Matchers {
 
-  import ElasticDsl._
+  private val IndexName = "football"
 
-  import scala.concurrent.ExecutionContext.Implicits.global
+  case class Team(name: String, stadium: String, founded: Int)
+
+  implicit val TeamIndexable = new Indexable[Team] {
+    override def json(t: Team): String =
+      s"""{ "name" : "${t.name}", "stadium" : "${t.stadium}", "founded" : ${t.founded} }"""
+  }
+
+  implicit val HitReader = new HitReader[Team] {
+    override def read(hit: Hit): Either[Throwable, Team] =
+      Right(Team(
+        hit.sourceField("name").toString,
+        hit.sourceField("stadium").toString,
+        hit.sourceField("founded").toString.toInt
+      ))
+  }
 
   client.execute {
-    bulk(
-      index into "cluedo/characters" fields("name" -> "professor plum", "career" -> "scientist"),
-      index into "cluedo/characters" fields("name" -> "miss scarlet", "career" -> "media"),
-      index into "cluedo/characters" fields("name" -> "rev green", "career" -> "minister")
+    createIndex(IndexName).mappings(
+      mapping("teams").fields(
+        textField("name"),
+        textField("stadium"),
+        intField("founded")
+      )
     )
   }.await
 
-  refresh("cluedo")
-  blockUntilCount(3, "cluedo")
+  def indexRequest(id: Any, team: Team) = indexInto(IndexName / "teams").source(team).id(id)
 
-  val professorPlum = Killer("professor plum", "scientist")
-  val scarlet = Killer("miss scarlet", "media")
-  val revGreen = Killer("rev green", "minister")
+  client.execute(
+    bulk(
+      indexRequest(1, Team("Middlesbrough", "Fortress Riverside", 1876)),
+      indexRequest(2, Team("Arsenal", "The Library", 1886))
+    ).refresh(RefreshPolicy.IMMEDIATE)
+  ).await
 
-  implicit object KillerHitReader extends HitReader[Killer] {
-    override def from(hit: Hit): Killer Or ErrorMessage = {
-      Good(
-        Killer(
-          hit.source("name").toString,
-          hit.source("career").toString
-        )
+  "hit reader" should "unmarshall search results" in {
+    val teams = client.execute {
+      search("football").matchAll()
+    }.await.to[Team]
+
+    teams.toSet shouldBe Set(
+      Team("Arsenal", "The Library", 1886),
+      Team("Middlesbrough", "Fortress Riverside", 1876)
+    )
+  }
+
+  it should "unmarshall safely search results" in {
+    val teams = client.execute {
+      search("football").matchAll()
+    }.await.safeTo[Team]
+
+    teams.toSet shouldBe Set(
+      Right(Team("Arsenal", "The Library", 1886)),
+      Right(Team("Middlesbrough", "Fortress Riverside", 1876))
+    )
+  }
+
+  it should "unmarshall safely a get response" in {
+    val team = client.execute {
+      get(1).from(IndexName)
+    }.await.safeTo[Team]
+
+    team shouldBe Right(Team("Middlesbrough", "Fortress Riverside", 1876))
+  }
+
+  it should "unmarshall a get response" in {
+    val team = client.execute {
+      get(1).from(IndexName)
+    }.await.to[Team]
+
+    team shouldBe Team("Middlesbrough", "Fortress Riverside", 1876)
+  }
+
+  it should "unmarshall safely multi get results" in {
+    val teams = client.execute {
+      multiget(
+        get(1).from(IndexName),
+        get(2).from(IndexName)
       )
-    }
+    }.await.safeTo[Team]
+
+    teams.toSet shouldBe Set(
+      Right(Team("Arsenal", "The Library", 1886)),
+      Right(Team("Middlesbrough", "Fortress Riverside", 1876))
+    )
   }
 
-  implicit object BadKillerHitReader extends HitReader[BadKiller] {
-    override def from(hit: Hit): BadKiller Or ErrorMessage = {
-      Bad("Missing field missingField")
-    }
-  }
+  it should "unmarshall multi get results" in {
+    val teams = client.execute {
+      multiget(
+        get(1).from(IndexName),
+        get(2).from(IndexName)
+      )
+    }.await.to[Team]
 
-  //  import HitFieldReader._
-  //
-  //  implicit object CharacterHitReader extends HitReader[Character] {
-  //
-  //    override def as(hit: RichSearchHit): Character Or Every[ErrorMessage] = {
-  //      import Accumulation._
-  //      val color = hit.richFields("color").validate[String]("Reading Character,")
-  //      val sex = hit.richFields("sex").validate[String]("Reading Character,")
-  //      val age = hit.richFields("age").validate[Int]("Reading Character,")
-  //      withGood(color, sex, age)(Character)
-  //    }
-  //  }
-  //
-  //  implicit object KillerHitReader extends HitReader[Killer] {
-  //
-  //    override def as(hit: RichSearchHit): Killer Or Every[ErrorMessage] = {
-  //      import Accumulation._
-  //      val badName = hit.richFields("name").validate[String]("Reading Killer,")
-  //      val weapons: Seq[String] Or Every[ErrorMessage] = hit.richFields("weapons").validate[Seq[String]]("Reading Killer,")
-  //      val character: Option[Character] Or Every[ErrorMessage] = hit.richFields("character").validate[Option[Character]]("Reading Killer,")
-  //      withGood(badName, weapons, character)(Killer)
-  //    }
-  //  }
-  //
-  //  implicit object BadKillerHitRead extends HitReader[BadKiller] {
-  //
-  //    override def as(hit: RichSearchHit): BadKiller Or Every[ErrorMessage] = {
-  //      import Accumulation._
-  //      val badName = hit.richFields("badName").validate[String]("Reading BadKiller,")
-  //      withGood(badName)(BadKiller)
-  //    }
-  //  }
-
-  "HitRead" should {
-    "convert using an implicit HitRead to Array[Or[T, ErrorMessage]]" in {
-      val killers = client.execute {
-        search("cluedo" / "characters").query("*:*")
-      }.map(_.to[Killer]).await
-      killers.collect {
-        case Good(x) => x
-      }.toSet shouldBe Set(professorPlum, scarlet, revGreen)
-    }
-    "Include errors in the results" in {
-      val killers = client.execute {
-        search in "cluedo" / "characters" query "*:*"
-      }.map(_.to[BadKiller]).await
-      killers.collect {
-        case Bad(x) => x
-      }.toList shouldBe List("Missing field missingField", "Missing field missingField", "Missing field missingField")
-    }
+    teams.toSet shouldBe Set(
+      Team("Arsenal", "The Library", 1886),
+      Team("Middlesbrough", "Fortress Riverside", 1876)
+    )
   }
 }
-
-case class Killer(name: String, career: String)
-case class BadKiller(missingField: String)

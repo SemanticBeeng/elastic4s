@@ -10,27 +10,38 @@ object Build extends AutoPlugin {
 
   object autoImport {
     val org = "com.sksamuel.elastic4s"
-    val ScalaVersion = "2.11.8"
-    val ScalatestVersion = "3.0.0"
-    val MockitoVersion = "1.9.5"
-    val JacksonVersion = "2.7.5"
-    val Slf4jVersion = "1.7.12"
-    val ScalaLoggingVersion = "2.1.2"
-    val ElasticsearchVersion = "2.4.1"
-    val Log4jVersion = "1.2.17"
+    val AkkaVersion = "2.4.14"
+    val CatsVersion = "0.8.1"
+    val CirceVersion = "0.6.1"
     val CommonsIoVersion = "2.4"
-    val CirceVersion = "0.4.1"
+    val ElasticsearchVersion = "5.0.2"
+    val ExtsVersion = "1.36.0"
+    val JacksonVersion = "2.8.4"
+    val Json4sVersion = "3.5.0"
+    val Log4jVersion = "2.6.2"
+    val LuceneVersion = "6.2.1"
+    val MockitoVersion = "1.9.5"
+    val PlayJsonVersion = "2.5.9"
+    val ReactiveStreamsVersion = "1.0.0"
+    val ScalaVersion = "2.12.0"
+    val ScalatestVersion = "3.0.1"
+    val Slf4jVersion = "1.7.12"
   }
 
   import autoImport._
 
   override def projectSettings = Seq(
     organization := org,
+    // a 'compileonly' configuation
+    ivyConfigurations += config("compileonly").hide,
+    // some compileonly dependency
+    libraryDependencies += "commons-io" % "commons-io" % "2.4" % "compileonly",
+    // appending everything from 'compileonly' to unmanagedClasspath
+    unmanagedClasspath in Compile ++= update.value.select(configurationFilter("compileonly")),
     scalaVersion := ScalaVersion,
-    crossScalaVersions := Seq("2.11.8", "2.10.5"),
+    crossScalaVersions := Seq("2.11.8", "2.12.0"),
     publishMavenStyle := true,
     resolvers += Resolver.mavenLocal,
-    resolvers += "elasticsearch-releases" at "https://maven.elasticsearch.org/releases",
     fork in Test := true,
     javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:MaxPermSize=2048M", "-XX:+CMSClassUnloadingEnabled"),
     publishArtifact in Test := false,
@@ -40,14 +51,34 @@ object Build extends AutoPlugin {
     scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8"),
     javacOptions := Seq("-source", "1.7", "-target", "1.7"),
     libraryDependencies ++= Seq(
-      "org.elasticsearch"     % "elasticsearch"     % ElasticsearchVersion,
-      "org.scalactic"         %% "scalactic"        % "3.0.0",
-      "org.slf4j"             % "slf4j-api"         % Slf4jVersion,
-      "commons-io"            % "commons-io"        % CommonsIoVersion  % "test",
-      "log4j"                 % "log4j"             % Log4jVersion      % "test",
-      "org.slf4j"             % "log4j-over-slf4j"  % Slf4jVersion      % "test",
-      "org.mockito"           % "mockito-all"       % MockitoVersion    % "test",
-      "org.scalatest"         %% "scalatest"        % ScalatestVersion  % "test"
+      "org.elasticsearch.client"              % "transport"                 % ElasticsearchVersion,
+      "org.elasticsearch.client"              % "rest"                      % ElasticsearchVersion,
+      "org.apache.lucene"                     % "lucene-join"               % LuceneVersion,
+      "com.sksamuel.exts"                     %% "exts"                     % ExtsVersion,
+      "org.typelevel"                         %% "cats"                     % CatsVersion,
+      "org.slf4j"                             % "slf4j-api"                 % Slf4jVersion,
+      "io.netty"                              % "netty-all"                 % "4.1.6.Final",
+      "org.apache.logging.log4j"              % "log4j-api"                 % "2.7",
+      "org.apache.lucene"                     % "lucene-core"               % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-analyzers-common"   % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-backward-codecs"    % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-grouping"           % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-highlighter"        % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-join"               % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-memory"             % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-misc"               % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-queries"            % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-queryparser"        % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-sandbox"            % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-spatial"            % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-spatial-extras"     % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-spatial3d"          % LuceneVersion,
+      "org.apache.lucene"                     % "lucene-suggest"            % LuceneVersion,
+      "io.netty"                              % "netty-all"                 % "4.1.5.Final",
+      "org.locationtech.spatial4j"            % "spatial4j"                 % "0.6",
+      "org.apache.httpcomponents"             % "httpclient"                % "4.5.2",
+      "org.mockito"                           % "mockito-all"               % MockitoVersion        % "test",
+      "org.scalatest"                         %% "scalatest"                % ScalatestVersion      % "test"
     ),
     publishTo <<= version {
       (v: String) =>

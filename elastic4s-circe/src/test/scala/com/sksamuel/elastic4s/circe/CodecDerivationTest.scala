@@ -1,6 +1,6 @@
 package com.sksamuel.elastic4s.circe
 
-import com.sksamuel.elastic4s.RichSearchHit
+import com.sksamuel.elastic4s.searches.RichSearchHit
 import org.elasticsearch.search.SearchHit
 import org.mockito.Mockito
 import org.scalatest.mockito.MockitoSugar._
@@ -14,12 +14,18 @@ class CodecDerivationTest extends WordSpec with Matchers with GivenWhenThen {
   "A derived HitAs instance" should {
 
     "be implicitly found if circe.generic.auto is in imported" in {
-      import io.circe.generic.auto._
-      "implicitly[HitAs[Cafe]]" should compile
+      """
+        import io.circe.generic.auto._
+        import com.sksamuel.elastic4s.HitAs
+        implicitly[HitAs[Cafe]]
+      """ should compile
     }
 
     "not compile if no decoder is in scope" in {
-      "implicitly[HitAs[Cafe]]" shouldNot compile
+      """
+        import com.sksamuel.elastic4s.HitAs
+        implicitly[HitAs[Cafe]]
+      """ shouldNot compile
     }
 
     "extract the correct values" in {
@@ -46,11 +52,18 @@ class CodecDerivationTest extends WordSpec with Matchers with GivenWhenThen {
 
   "A derived Indexable instance" should {
     "be implicitly found if circe.generic.auto is in imported" in {
-      "implicitly[Indexable[Cafe]]" should compile
+      """
+        import io.circe.generic.auto._
+        import com.sksamuel.elastic4s.Indexable
+        implicitly[Indexable[Cafe]]
+      """ should compile
     }
 
     "not compile if no decoder is in scope" in {
-      "implicitly[Indexable[Cafe]]" shouldNot compile
+      """
+        import com.sksamuel.elastic4s.Indexable
+        implicitly[Indexable[Cafe]]
+      """ shouldNot compile
     }
   }
 

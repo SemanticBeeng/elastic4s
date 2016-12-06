@@ -3,9 +3,9 @@ package com.sksamuel.elastic4s.streams
 import java.util.concurrent.Executors
 
 import akka.actor.ActorSystem
+import com.sksamuel.elastic4s.bulk.BulkCompatibleDefinition
 import com.sksamuel.elastic4s.jackson.ElasticJackson
 import com.sksamuel.elastic4s.testkit.ElasticSugar
-import com.sksamuel.elastic4s.{BulkCompatibleDefinition, ElasticDsl}
 import org.reactivestreams.{Publisher, Subscriber, Subscription}
 import org.scalatest.{Matchers, WordSpec}
 
@@ -13,7 +13,6 @@ import scala.concurrent.duration._
 
 class SubscriberFlushAfterTest extends WordSpec with Matchers with ElasticSugar {
 
-  import ElasticDsl._
   import ElasticJackson.Implicits._
   import ReactiveElastic._
 
@@ -22,10 +21,9 @@ class SubscriberFlushAfterTest extends WordSpec with Matchers with ElasticSugar 
 
   implicit object SpaceshipRequestBuilder extends RequestBuilder[Spaceship] {
     override def request(ship: Spaceship): BulkCompatibleDefinition = {
-      index into "subscriberflushaftertest" / "ships" source ship
+      indexInto("subscriberflushaftertest" / "ships").source(ship)
     }
   }
-
 
   ensureIndexExists("subscriberflushaftertest")
 
@@ -87,7 +85,7 @@ class SpaceshipSlowPublisher(duration: FiniteDuration) extends Publisher[Spacesh
         executor.submit(new Runnable {
           override def run(): Unit = {
             while (remaining.nonEmpty) {
-              remaining.take(1).foreach(s.onNext)
+              remaining.take(1).foreach(t => s.onNext(t))
               remaining = remaining.drop(1)
               Thread.sleep(duration.toMillis)
             }

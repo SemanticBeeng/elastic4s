@@ -1,7 +1,6 @@
 package com.sksamuel.elastic4s
 
-/** @author Stephen Samuel */
-sealed abstract class Preference(val elastic: String)
+abstract class Preference(val value: String)
 object Preference {
   case class PreferNode(id: String) extends Preference("_prefer_node:" + id)
   case object Local extends Preference("_local")
@@ -9,7 +8,7 @@ object Preference {
   case class OnlyNode(id: String) extends Preference("_only_node:" + id)
   case class OnlyNodes(attr: String) extends Preference("_only_nodes:" + attr)
   case class Shards(ids: String*) extends Preference("_shards:" + ids.mkString(","))
-  case class Custom(value: String) extends Preference(value)
+  case class Custom(override val value: String) extends Preference(value)
   case object Primary extends Preference("_primary")
   case object PrimaryFirst extends Preference("_primary_first")
   case object Replica extends Preference("_replica")

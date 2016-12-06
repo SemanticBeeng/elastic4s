@@ -9,8 +9,10 @@ import org.elasticsearch.action.admin.indices.exists.types.TypesExistsResponse
 import org.elasticsearch.action.admin.indices.flush.FlushResponse
 import org.elasticsearch.action.admin.indices.open.OpenIndexResponse
 import org.elasticsearch.action.admin.indices.refresh.RefreshResponse
+import org.elasticsearch.action.admin.indices.rollover.RolloverResponse
 import org.elasticsearch.action.admin.indices.segments.IndicesSegmentResponse
-import org.elasticsearch.action.admin.indices.stats.{ShardStats, IndexStats, CommonStats, IndicesStatsResponse}
+import org.elasticsearch.action.admin.indices.shrink.ShrinkResponse
+import org.elasticsearch.action.admin.indices.stats.{CommonStats, IndexStats, IndicesStatsResponse, ShardStats}
 import org.elasticsearch.action.support.IndicesOptions
 import org.elasticsearch.client.Client
 import org.elasticsearch.cluster.routing.ShardRouting
@@ -20,6 +22,50 @@ import org.elasticsearch.index.shard.ShardId
 import scala.concurrent.Future
 
 trait IndexAdminDsl {
+
+  def refreshIndex(first: String, rest: String*): RefreshIndexDefinition = refreshIndex(first +: rest)
+  def refreshIndex(indexes: Iterable[String]): RefreshIndexDefinition = refreshIndex(Indexes(indexes))
+  def refreshIndex(indexes: Indexes): RefreshIndexDefinition = RefreshIndexDefinition(indexes.values)
+
+  def indexStats(indexes: Indexes): IndicesStatsDefinition = IndicesStatsDefinition(indexes)
+  def indexStats(first: String, rest: String*): IndicesStatsDefinition = indexStats(first +: rest)
+
+  def typesExist(types: String*): TypesExistExpectsIn = typesExist(types)
+  def typesExist(types: Iterable[String]): TypesExistExpectsIn = new TypesExistExpectsIn(types)
+  class TypesExistExpectsIn(types: Iterable[String]) {
+    def in(indexes: String*): TypesExistsDefinition = TypesExistsDefinition(indexes, types.toSeq)
+  }
+
+  def closeIndex(index: String): CloseIndexDefinition = CloseIndexDefinition(index)
+  def openIndex(index: String): OpenIndexDefinition = OpenIndexDefinition(index)
+
+  def getSegments(indexes: Indexes): GetSegmentsDefinition = GetSegmentsDefinition(indexes)
+  def getSegments(first: String, rest: String*): GetSegmentsDefinition = getSegments(first +: rest)
+
+  def flushIndex(indexes: Iterable[String]): FlushIndexDefinition = FlushIndexDefinition(indexes.toSeq)
+  def flushIndex(indexes: String*): FlushIndexDefinition = flushIndex(indexes)
+
+  def indexExists(indexes: Iterable[String]): IndexExistsDefinition = IndexExistsDefinition(indexes.toSeq)
+  def indexExists(indexes: String*): IndexExistsDefinition = IndexExistsDefinition(indexes)
+
+  def clearCache(first: String, rest: String*): ClearCacheDefinition = clearCache(first +: rest)
+  def clearCache(indexes: Iterable[String]): ClearCacheDefinition = ClearCacheDefinition(indexes.toSeq)
+
+  def clearIndex(first: String, rest: String*): ClearCacheDefinition = clearIndex(first +: rest)
+  def clearIndex(indexes: Iterable[String]): ClearCacheDefinition = ClearCacheDefinition(indexes.toSeq)
+
+  def rollover(alias: String): RolloverDefinition = RolloverDefinition(alias)
+
+  def shrink(source: String, target: String): ShrinkDefinition = ShrinkDefinition(source, target)
+
+  implicit object ShrinkDefinitionExecutable
+    extends Executable[ShrinkDefinition, ShrinkResponse, ShrinkResponse] {
+    override def apply(c: Client, t: ShrinkDefinition): Future[ShrinkResponse] = {
+      val builder = c.admin().indices().prepareShrinkIndex(t.source, t.target)
+      t.populate(builder)
+      injectFuture(builder.execute)
+    }
+  }
 
   implicit object OpenIndexDefinitionExecutable
     extends Executable[OpenIndexDefinition, OpenIndexResponse, OpenIndexResponse] {
@@ -46,6 +92,15 @@ trait IndexAdminDsl {
     extends Executable[IndexExistsDefinition, IndicesExistsResponse, IndicesExistsResponse] {
     override def apply(c: Client, t: IndexExistsDefinition): Future[IndicesExistsResponse] = {
       injectFuture(c.admin.indices.prepareExists(t.indexes: _*).execute)
+    }
+  }
+
+  implicit object RolloverDefinitionExecutable
+    extends Executable[RolloverDefinition, RolloverResponse, RolloverResponse] {
+    override def apply(c: Client, r: RolloverDefinition): Future[RolloverResponse] = {
+      val builder = c.admin().indices().prepareRolloverIndex(r.sourceAlias)
+      r.populate(builder)
+      injectFuture(builder.execute)
     }
   }
 
@@ -119,39 +174,6 @@ case class RefreshIndexDefinition(indexes: Seq[String])
 case class IndicesStatsResult(original: IndicesStatsResponse) {
 
   import scala.collection.JavaConverters._
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getPrimaries() = original.getPrimaries
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def asMap() = original.asMap
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getIndices() = original.getIndices
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getTotal(): CommonStats = original.getTotal
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getShards(): Array[org.elasticsearch.action.admin.indices.stats.ShardStats] = original.getShards
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getIndex(name: String) = original.getIndex(name)
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getAt(pos: Int) = original.getAt(pos)
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getTotalShards() = original.getTotalShards
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getFailedShards() = original.getFailedShards
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getSuccessfulShards() = original.getSuccessfulShards
-
-  @deprecated("Use the scala idiomatic methods", "2.0")
-  def getShardFailures() = original.getShardFailures
 
   def primaries: CommonStats = original.getPrimaries
   def routing: Map[ShardRouting, ShardStats] = original.asMap.asScala.toMap

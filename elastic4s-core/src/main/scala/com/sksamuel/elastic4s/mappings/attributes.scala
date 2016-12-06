@@ -43,7 +43,10 @@ object attributes {
 
     private[this] var _store: Option[String] = None
 
+    @deprecated("use stored(true) or stored(false)", "5.0.0")
     def stored(param: YesNo): this.type = store(param)
+
+    @deprecated("use stored(true) or stored(false)", "5.0.0")
     def store(store: YesNo): this.type = {
       _store = Some(store.value)
       this
@@ -177,6 +180,20 @@ object attributes {
     protected override def insert(source: XContentBuilder): Unit = {
       _termVector.foreach(arg => source.field("term_vector", arg.value))
       _termVectorString.foreach(source.field("term_vector", _))
+    }
+  }
+
+  trait AttributeNorms extends Attribute { self: TypedFieldDefinition =>
+
+    private[this] var _norms: Option[Boolean] = None
+
+    def norms(omitNorms: Boolean): this.type = {
+      _norms = Some(omitNorms)
+      this
+    }
+
+    protected override def insert(source: XContentBuilder): Unit = {
+      _norms.foreach(source.field("norms", _))
     }
   }
 
@@ -568,8 +585,10 @@ object attributes {
       this
     }
 
+    import scala.collection.JavaConverters._
+
     protected override def insert(source: XContentBuilder): Unit = {
-      _copyTo.foreach(source.field("copy_to", _: _*))
+      _copyTo.foreach(xs => source.field("copy_to", xs.asJava))
     }
   }
 

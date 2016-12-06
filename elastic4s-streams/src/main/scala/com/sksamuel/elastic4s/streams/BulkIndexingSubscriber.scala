@@ -1,7 +1,9 @@
 package com.sksamuel.elastic4s.streams
 
 import akka.actor._
-import com.sksamuel.elastic4s.{BulkCompatibleDefinition, BulkDefinition, BulkItemResult, BulkResult, ElasticClient, ElasticDsl}
+import com.sksamuel.elastic4s.ElasticClient
+import com.sksamuel.elastic4s.bulk.{BulkCompatibleDefinition, BulkDefinition, RichBulkItemResponse, RichBulkResponse}
+import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.reactivestreams.{Subscriber, Subscription}
 
 import scala.collection.mutable.ArrayBuffer
@@ -23,7 +25,7 @@ import scala.util.{Failure, Success}
  */
 class BulkIndexingSubscriber[T] private[streams](client: ElasticClient,
                                                  builder: RequestBuilder[T],
-                                                 config: SubscriberConfig)
+                                                 config: TypedSubscriberConfig[T])
                                                 (implicit actorRefFactory: ActorRefFactory) extends Subscriber[T] {
 
   private var actor: ActorRef = _
@@ -60,7 +62,6 @@ class BulkIndexingSubscriber[T] private[streams](client: ElasticClient,
   }
 }
 
-
 object BulkActor {
 
   // signifies that the downstream publisher has completed (NOT that a bulk request has suceeded)
@@ -68,24 +69,24 @@ object BulkActor {
 
   case object ForceIndexing
 
-  case class Result(items: Seq[BulkItemResult])
+  case class Result[T](items: Seq[RichBulkItemResponse], originals: Seq[T])
 
-  case class FailedResult(items: Seq[BulkItemResult])
+  case class FailedResult[T](items: Seq[RichBulkItemResponse], originals: Seq[T])
 
   case class Request(n: Int)
 
-  case class Send(req: BulkDefinition, attempts: Int)
+  case class Send[T](req: BulkDefinition, originals: Seq[T], attempts: Int)
 
 }
-
 
 class BulkActor[T](client: ElasticClient,
                    subscription: Subscription,
                    builder: RequestBuilder[T],
-                   config: SubscriberConfig) extends Actor {
+                   typedConfig: TypedSubscriberConfig[T]) extends Actor {
 
-  import ElasticDsl._
+  import com.sksamuel.elastic4s.ElasticDsl._
   import context.{dispatcher, system}
+  import typedConfig.{ baseConfig => config }
 
   private val buffer = new ArrayBuffer[T]()
   buffer.sizeHint(config.batchSize)
@@ -145,21 +146,31 @@ class BulkActor[T](client: ElasticClient,
       subscription.request(n)
       requested = requested + n
 
-    case BulkActor.Send(req, attempts) => send(req, attempts)
+    case msg: BulkActor.Send[T] => send(msg.req, msg.originals, msg.attempts)
 
     case BulkActor.ForceIndexing =>
       if (buffer.nonEmpty)
         index()
 
-    case BulkActor.Result(items) =>
-      confirmed = confirmed + items.size
-      items.foreach(config.listener.onAck)
-      checkCompleteOrRequestNext(items.size)
+    case msg: BulkActor.Result[T] =>
+      confirmed = confirmed + msg.items.size
+      msg.items
+        .zip(msg.originals)
+        .foreach { case (item, original) =>
+          config.listener.onAck(item)
+          typedConfig.typedListener.onAck(item, original)
+        }
+      checkCompleteOrRequestNext(msg.items.size)
 
-    case BulkActor.FailedResult(items) =>
-      failed = failed + items.size
-      items.foreach(config.listener.onFailure)
-      checkCompleteOrRequestNext(items.size)
+    case msg: BulkActor.FailedResult[T] =>
+      failed = failed + msg.items.size
+      msg.items
+        .zip(msg.originals)
+        .foreach { case (item, original) =>
+          config.listener.onFailure(item)
+          typedConfig.typedListener.onFailure(item, original)
+        }
+      checkCompleteOrRequestNext(msg.items.size)
 
     case t: T =>
       buffer.append(t)
@@ -177,10 +188,12 @@ class BulkActor[T](client: ElasticClient,
     else self ! BulkActor.Request(n)
   }
 
-  // Stops the schedulers if they exist
+  // Stops the schedulers if they exist and invoke final functions
   override def postStop() = {
     flushIntervalScheduler.map(_.cancel)
     flushAfterScheduler.map(_.cancel)
+    if (failed == 0)
+      config.successFn()
     config.completionFn()
   }
 
@@ -190,30 +203,43 @@ class BulkActor[T](client: ElasticClient,
     }
   }
 
-  private def send(req: BulkDefinition, attempts: Int): Unit = {
+  private def send(req: BulkDefinition, originals: Seq[T], attempts: Int): Unit = {
+    require(req.requests.size == originals.size, "Requests size does not match originals size")
 
-    // returns just requests that failed as a new bulk definition
-    def retryDef(resp: BulkResult): BulkDefinition = {
+    def filterByIndexes[S](sequence: Seq[S], indexes: Set[Int]) =
+      sequence.zipWithIndex
+        .filter { case (_, index) => indexes.contains(index) }
+        .map { case (seqItem, _) => seqItem }
+    def getOriginalForResponse(response: RichBulkItemResponse) = originals(response.itemId)
+
+    // returns just requests that failed as a new bulk definition (+ originals)
+    def getRetryDef(resp: RichBulkResponse): (BulkDefinition, Seq[T]) = {
+      val policy = if (config.refreshAfterOp) RefreshPolicy.IMMEDIATE else RefreshPolicy.NONE
+
       val failureIds = resp.failures.map(_.itemId).toSet
-      val failedReqs = req.requests.zipWithIndex.filter { case (_, index) => failureIds.contains(index) }.map(_._1)
-      BulkDefinition(failedReqs).refresh(config.refreshAfterOp)
+      val retryOriginals = filterByIndexes(originals, failureIds)
+      val failedReqs = filterByIndexes(req.requests, failureIds)
+
+      (BulkDefinition(failedReqs).refresh(policy), retryOriginals)
     }
 
     client.execute(req).onComplete {
       case Failure(e) => self ! e
-      case Success(resp: BulkResult) =>
+      case Success(resp: RichBulkResponse) =>
 
         if (resp.hasFailures) {
           // all failures need to be resent, if retries left, but only after we wait for the failureWait period to
           // avoid flooding the cluster
-          if (attempts > 0)
-            system.scheduler.scheduleOnce(config.failureWait, self, BulkActor.Send(retryDef(resp), attempts - 1))
-          else
-            self ! BulkActor.FailedResult(resp.failures)
+          if (attempts > 0) {
+            val (retryDef, originals) = getRetryDef(resp)
+            system.scheduler.scheduleOnce(config.failureWait, self, BulkActor.Send(retryDef, originals, attempts - 1))
+          } else {
+            self ! BulkActor.FailedResult(resp.failures, resp.failures.map(getOriginalForResponse))
+          }
         }
 
         if (resp.hasSuccesses)
-          self ! BulkActor.Result(resp.successes)
+          self ! BulkActor.Result(resp.successes, resp.successes.map(getOriginalForResponse))
     }
   }
 
@@ -230,11 +256,12 @@ class BulkActor[T](client: ElasticClient,
 
     def bulkDef: BulkDefinition = {
       val defs = buffer.map(t => builder.request(t))
-      BulkDefinition(defs).refresh(config.refreshAfterOp)
+      val policy = if (config.refreshAfterOp) RefreshPolicy.IMMEDIATE else RefreshPolicy.NONE
+      BulkDefinition(defs).refresh(policy)
     }
 
     sent = sent + buffer.size
-    self ! BulkActor.Send(bulkDef, config.maxAttempts)
+    self ! BulkActor.Send(bulkDef, buffer.toList, config.maxAttempts)
 
     buffer.clear
 
@@ -244,7 +271,6 @@ class BulkActor[T](client: ElasticClient,
   }
 }
 
-
 /**
  * An implementation of this typeclass must provide a bulk compatible request for the given instance of T.
  * @tparam T the type of elements this provider supports
@@ -253,37 +279,58 @@ trait RequestBuilder[T] {
   def request(t: T): BulkCompatibleDefinition
 }
 
-
 /**
  * Notified on each acknowledgement
  */
 trait ResponseListener {
-  def onAck(resp: BulkItemResult): Unit
-  def onFailure(resp: BulkItemResult): Unit = ()
+  def onAck(resp: RichBulkItemResponse): Unit
+  def onFailure(resp: RichBulkItemResponse): Unit = ()
 }
 
+trait TypedResponseListener[-T] {
+  def onAck(resp: RichBulkItemResponse, original: T): Unit
+  def onFailure(resp: RichBulkItemResponse, original: T): Unit = ()
+}
 
 object ResponseListener {
   def noop = new ResponseListener {
-    override def onAck(resp: BulkItemResult): Unit = ()
+    override def onAck(resp: RichBulkItemResponse): Unit = ()
   }
 }
 
+object TypedResponseListener {
+  val noop = new TypedResponseListener[Any] {
+    override def onAck(resp: RichBulkItemResponse, original: Any): Unit = ()
+  }
+}
 
 /**
  * @param listener a listener which is notified on each acknowledge batch item
+ *
  * @param batchSize the number of elements to group together per batch aside from the last batch
+ *
  * @param concurrentRequests the number of concurrent batch operations
+ *
  * @param refreshAfterOp if the index should be refreshed after each bulk operation
+ *
  * @param completionFn a function which is invoked when all sent requests have been acknowledged and the publisher has completed
- * @param errorFn a function which is invoked when there is an error
+ *                    Note: this function is executed regardless of whether there was an error or not,
+ *                    that is, this function is always invoked regardless of the state
+ *
+ * @param successFn a function will is only invoked when all operations have completed successfully
+ *
+ * @param errorFn a function which is invoked after there is an error
+ *
  * @param failureWait the timeout before re-trying failed requests. Usually a failed request is elasticsearch's way of
  *                    indicating backpressure, so this parameter determines how long to wait between requests.
+ *
  * @param maxAttempts the max number of times to try a request. If it fails too many times it probably isn't back pressure
  *                    but an error with the document.
+ *
  * @param flushInterval used to schedule periodic bulk indexing. This can be set to avoid waiting for a complete batch
  *                      for a long period of time. It also is used if the publisher will never complete.
  *                      This ensures that all elements are indexed, even if the last batch size is lower than batch size.
+ *
  * @param flushAfter used to schedule an index if no document has been received within the given duration.
  *                   Once an index is performed (either by this flush value or because docs arrived in time)
  *                   the flush after schedule is reset.
@@ -293,8 +340,16 @@ case class SubscriberConfig(batchSize: Int = 100,
                             refreshAfterOp: Boolean = false,
                             listener: ResponseListener = ResponseListener.noop,
                             completionFn: () => Unit = () => (),
+                            successFn: () => Unit = () => (),
                             errorFn: Throwable => Unit = e => (),
                             failureWait: FiniteDuration = 2.seconds,
                             maxAttempts: Int = 5,
                             flushInterval: Option[FiniteDuration] = None,
-                            flushAfter: Option[FiniteDuration] = None)
+                            flushAfter: Option[FiniteDuration] = None) {
+
+  def withTypedListener[T](typedListener: TypedResponseListener[T]): TypedSubscriberConfig[T] =
+    TypedSubscriberConfig(this, typedListener)
+}
+
+case class TypedSubscriberConfig[T](baseConfig: SubscriberConfig,
+                                    typedListener: TypedResponseListener[T] = TypedResponseListener.noop)

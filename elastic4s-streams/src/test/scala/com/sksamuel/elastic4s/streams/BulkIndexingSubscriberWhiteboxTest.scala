@@ -1,9 +1,9 @@
 package com.sksamuel.elastic4s.streams
 
 import akka.actor.ActorSystem
+import com.sksamuel.elastic4s.bulk.BulkCompatibleDefinition
 import com.sksamuel.elastic4s.jackson.ElasticJackson
-import com.sksamuel.elastic4s.testkit.ElasticSugar
-import com.sksamuel.elastic4s.{BulkCompatibleDefinition, ElasticDsl}
+import com.sksamuel.elastic4s.testkit.{AbstractElasticSugar, ClassLocalNodeProvider}
 import org.reactivestreams.tck.SubscriberWhiteboxVerification.{SubscriberPuppet, WhiteboxSubscriberProbe}
 import org.reactivestreams.tck.{SubscriberWhiteboxVerification, TestEnvironment}
 import org.reactivestreams.{Subscriber, Subscription}
@@ -11,15 +11,13 @@ import org.scalatest.testng.TestNGSuiteLike
 
 class BulkIndexingSubscriberWhiteboxTest
   extends SubscriberWhiteboxVerification[Item](new TestEnvironment(DEFAULT_TIMEOUT_MILLIS))
-    with ElasticSugar with TestNGSuiteLike {
-
-  import ElasticDsl._
+    with AbstractElasticSugar with TestNGSuiteLike with ClassLocalNodeProvider {
 
   implicit val system = ActorSystem()
 
   try {
     client.execute {
-      create index "bulkindexwhitebox"
+      createIndex("bulkindexwhitebox")
     }.await
   } catch {
     case e: Exception =>
@@ -29,11 +27,11 @@ class BulkIndexingSubscriberWhiteboxTest
 
     import ElasticJackson.Implicits._
 
-    override def request(t: Item): BulkCompatibleDefinition = index into "bulkindexwhitebox" / "castles" source t
+    override def request(t: Item): BulkCompatibleDefinition = indexInto("bulkindexwhitebox" / "castles").doc(t)
   }
 
   override def createSubscriber(probe: WhiteboxSubscriberProbe[Item]): Subscriber[Item] = {
-    new BulkIndexingSubscriber[Item](client, ItemRequestBuilder, SubscriberConfig()) {
+    new BulkIndexingSubscriber[Item](client, ItemRequestBuilder, TypedSubscriberConfig(SubscriberConfig())) {
 
       override def onSubscribe(s: Subscription): Unit = {
         super.onSubscribe(s)
@@ -90,5 +88,3 @@ class BulkIndexingSubscriberWhiteboxTest
 }
 
 case class Item(name: String)
-
-

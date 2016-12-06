@@ -1,10 +1,14 @@
 package com.sksamuel.elastic4s.analyzers
 
 import org.elasticsearch.common.xcontent.{XContentFactory, XContentBuilder}
+import scala.collection.JavaConverters._
 
 trait AnalyzerFilter {
   def name: String
 }
+
+case class PredefinedTokenFilter(name: String) extends TokenFilter
+case class PredefinedCharFilter(name: String) extends CharFilter
 
 trait AnalyzerFilterDefinition {
   def filterType: String
@@ -33,7 +37,7 @@ case class MappingCharFilter(name: String, mappings: (String, String)*)
   val filterType = "mapping"
 
   def build(source: XContentBuilder): Unit = {
-    source.field("mappings", mappings.map({ case (k, v) => s"$k=>$v" }).toArray: _*)
+    source.field("mappings", mappings.map({ case (k, v) => s"$k=>$v" }).asJava)
   }
 }
 

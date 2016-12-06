@@ -1,6 +1,5 @@
 package com.sksamuel.elastic4s.admin
 
-import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.testkit.ElasticSugar
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{WordSpec, Matchers}
@@ -28,7 +27,9 @@ class SegmentsTest extends WordSpec with Matchers with ElasticSugar with ScalaFu
         getSegments("*")
       }
       whenReady(f) { resp =>
-        resp.indices.keys.toSet shouldBe Set("segments_movies", "segments_tv", "segments_theatre")
+        Set("segments_movies", "segments_tv", "segments_theatre").foreach { indexName =>
+          resp.indices.keys.toSet should contain(indexName)
+        }
       }
     }
   }

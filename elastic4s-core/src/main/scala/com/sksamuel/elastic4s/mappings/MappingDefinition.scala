@@ -4,6 +4,7 @@ import com.sksamuel.elastic4s.analyzers.Analyzer
 import org.elasticsearch.common.xcontent.{XContentFactory, XContentBuilder}
 
 import scala.collection.mutable.ListBuffer
+import scala.collection.JavaConverters._
 
 class MappingDefinition(val `type`: String) {
 
@@ -23,14 +24,8 @@ class MappingDefinition(val `type`: String) {
   var _meta: Map[String, Any] = Map.empty
   var _routing: Option[RoutingDefinition] = None
   var _timestamp: Option[TimestampDefinition] = None
-  var _ttl: Option[Boolean] = None
   var _templates: Iterable[DynamicTemplateDefinition] = Nil
   var _id: Option[IdField] = None
-
-  @deprecated("no longer used, simply set ttl or not", "1.5.4")
-  def useTtl(useTtl: Boolean): this.type = {
-    this
-  }
 
   def all(enabled: Boolean): this.type = {
     _all = Option(enabled)
@@ -72,15 +67,6 @@ class MappingDefinition(val `type`: String) {
     this
   }
 
-  @deprecated("use the DynamicMapping enum version", "1.5.5")
-  def dynamic(dynamic: Boolean): this.type = {
-    _dynamic = dynamic match {
-      case true => Some(DynamicMapping.Dynamic)
-      case false => Some(DynamicMapping.False)
-    }
-    this
-  }
-
   def timestamp(enabled: Boolean,
                 path: Option[String] = None,
                 format: Option[String] = None,
@@ -91,11 +77,6 @@ class MappingDefinition(val `type`: String) {
 
   def timestamp(timestampDefinition: TimestampDefinition): this.type = {
     this._timestamp = Option(timestampDefinition)
-    this
-  }
-
-  def ttl(enabled: Boolean): this.type = {
-    _ttl = Option(enabled)
     this
   }
 
@@ -135,16 +116,13 @@ class MappingDefinition(val `type`: String) {
   }
 
   def fields(fields: Iterable[TypedFieldDefinition]): this.type = as(fields)
+  def fields(fields: TypedFieldDefinition*): this.type = as(fields: _*)
 
-  @deprecated("use mapping(myname).fields(myfields) or mapping myname fields myfields", "2.0")
+  def as(fields: TypedFieldDefinition*): this.type = as(fields.toIterable)
   def as(iterable: Iterable[TypedFieldDefinition]): this.type = {
     _fields ++= iterable
     this
   }
-
-  def fields(fields: TypedFieldDefinition*): this.type = as(fields: _*)
-  @deprecated("use mapping(myname).fields(myfields) or mapping myname fields myfields", "2.0")
-  def as(fields: TypedFieldDefinition*): this.type = as(fields.toIterable)
 
   def size(size: Boolean): this.type = {
     _size = Option(size)
@@ -165,6 +143,7 @@ class MappingDefinition(val `type`: String) {
     builder.endObject()
   }
 
+  // returns the mapping json wrapped in the mapping type name, eg "mytype" : { mapping }
   def buildWithName: XContentBuilder = {
     val builder = XContentFactory.jsonBuilder().startObject()
     builder.startObject(`type`)
@@ -177,13 +156,13 @@ class MappingDefinition(val `type`: String) {
 
     for ( all <- _all ) json.startObject("_all").field("enabled", all).endObject()
     (_source, _sourceExcludes) match {
-      case (_, l) if l.nonEmpty => json.startObject("_source").field("excludes", l.toArray: _*).endObject()
+      case (_, l) if l.nonEmpty => json.startObject("_source").field("excludes", l.asJava).endObject()
       case (Some(source), _) => json.startObject("_source").field("enabled", source).endObject()
       case _ =>
     }
 
     if (dynamic_date_formats.nonEmpty)
-      json.field("dynamic_date_formats", dynamic_date_formats.toArray: _*)
+      json.field("dynamic_date_formats", dynamic_date_formats.asJava)
 
     for ( dd <- date_detection ) json.field("date_detection", dd)
     for ( nd <- numeric_detection ) json.field("numeric_detection", nd)
@@ -202,8 +181,6 @@ class MappingDefinition(val `type`: String) {
     _size.foreach(x => json.startObject("_size").field("enabled", x).endObject())
 
     _timestamp.foreach(_.build(json))
-
-    for ( ttl <- _ttl ) json.startObject("_ttl").field("enabled", ttl).endObject()
 
     if (_fields.nonEmpty) {
       json.startObject("properties")
