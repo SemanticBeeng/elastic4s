@@ -58,6 +58,23 @@ Therefore if you bring in elastic4s (or even just the raw Java transport client)
 
 ##### Changelog
 
+###### 5.1.5
+
+* Fixed filter in add alias
+
+######
+
+* Added com.vividsolutions.jts.geom to build to avoid "stub issues"
+
+###### 5.1.3
+
+* Added explicit search scroll close in reactive streams #695
+* Added phrase suggestion collate query
+
+###### 5.1.1
+
+* Upgrade to elasticsearch 5.1.1
+
 ###### 5.0.4
 
 * elastic4s-xpack-security module.
@@ -881,6 +898,7 @@ folder. There is no need to configure anything externally.
 * Goldman Sachs
 * HMRC
 * Canal+
+* AOE
 
 _Raise a PR to add your company here_
 

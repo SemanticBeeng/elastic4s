@@ -10,20 +10,20 @@ object Build extends AutoPlugin {
 
   object autoImport {
     val org = "com.sksamuel.elastic4s"
-    val AkkaVersion = "2.4.14"
+    val AkkaVersion = "2.4.16"
     val CatsVersion = "0.8.1"
     val CirceVersion = "0.6.1"
     val CommonsIoVersion = "2.4"
-    val ElasticsearchVersion = "5.0.2"
-    val ExtsVersion = "1.36.0"
+    val ElasticsearchVersion = "5.1.1"
+    val ExtsVersion = "1.37.0"
     val JacksonVersion = "2.8.4"
     val Json4sVersion = "3.5.0"
     val Log4jVersion = "2.6.2"
-    val LuceneVersion = "6.2.1"
+    val LuceneVersion = "6.3.0"
     val MockitoVersion = "1.9.5"
-    val PlayJsonVersion = "2.5.9"
+    val PlayJsonVersion = "2.6.0-M1"
     val ReactiveStreamsVersion = "1.0.0"
-    val ScalaVersion = "2.12.0"
+    val ScalaVersion = "2.12.1"
     val ScalatestVersion = "3.0.1"
     val Slf4jVersion = "1.7.12"
   }
@@ -39,7 +39,7 @@ object Build extends AutoPlugin {
     // appending everything from 'compileonly' to unmanagedClasspath
     unmanagedClasspath in Compile ++= update.value.select(configurationFilter("compileonly")),
     scalaVersion := ScalaVersion,
-    crossScalaVersions := Seq("2.11.8", "2.12.0"),
+    crossScalaVersions := Seq("2.11.8", "2.12.1"),
     publishMavenStyle := true,
     resolvers += Resolver.mavenLocal,
     fork in Test := true,
@@ -57,6 +57,7 @@ object Build extends AutoPlugin {
       "com.sksamuel.exts"                     %% "exts"                     % ExtsVersion,
       "org.typelevel"                         %% "cats"                     % CatsVersion,
       "org.slf4j"                             % "slf4j-api"                 % Slf4jVersion,
+      "com.vividsolutions"                    % "jts"                       % "1.13",
       "io.netty"                              % "netty-all"                 % "4.1.6.Final",
       "org.apache.logging.log4j"              % "log4j-api"                 % "2.7",
       "org.apache.lucene"                     % "lucene-core"               % LuceneVersion,
@@ -74,7 +75,6 @@ object Build extends AutoPlugin {
       "org.apache.lucene"                     % "lucene-spatial-extras"     % LuceneVersion,
       "org.apache.lucene"                     % "lucene-spatial3d"          % LuceneVersion,
       "org.apache.lucene"                     % "lucene-suggest"            % LuceneVersion,
-      "io.netty"                              % "netty-all"                 % "4.1.5.Final",
       "org.locationtech.spatial4j"            % "spatial4j"                 % "0.6",
       "org.apache.httpcomponents"             % "httpclient"                % "4.5.2",
       "org.mockito"                           % "mockito-all"               % MockitoVersion        % "test",

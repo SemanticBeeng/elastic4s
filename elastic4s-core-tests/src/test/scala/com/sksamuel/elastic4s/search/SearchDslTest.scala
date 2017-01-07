@@ -442,6 +442,15 @@ class SearchDslTest extends FlatSpec with MockitoSugar with JsonSugar with OneIn
     req.show should matchJsonResource("/json/search/search_sort_geo.json")
   }
 
+  it should "generate correct json for geo sort with points" in {
+    val lat = 269.9986267089844
+    val lon = 539.9986267089844
+    val req = search("music") types "bands" sortBy {
+      geoSort("location").points(List(new GeoPoint(lat, lon))).mode(SortMode.MAX).geoDistance(GeoDistance.SLOPPY_ARC)
+    }
+    req.show should matchJsonResource("/json/search/search_sort_geo.json")
+  }
+
   it should "generate correct json for multiple sorts" in {
     val sorts = Seq(
       scriptSort("document.score") typed ScriptSortType.STRING order SortOrder.ASC,
@@ -849,7 +858,7 @@ class SearchDslTest extends FlatSpec with MockitoSugar with JsonSugar with OneIn
         constantScoreQuery {
           termQuery("name", "sammy")
         }
-      } scoreMode "avg" inner innerHits("obj1").fetchSource(new FetchSourceContext("incme", "excme"))
+      } scoreMode "avg" inner innerHits("obj1").fetchSource(new FetchSourceContext(true, Seq("incme").toArray, Seq("excme").toArray))
     }
     req.show should matchJsonResource("/json/search/search_query_nested_inner_hits_source.json")
   }
