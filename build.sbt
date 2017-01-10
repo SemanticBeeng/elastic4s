@@ -4,9 +4,11 @@ lazy val root = Project("elastic4s", file("."))
   .settings(name := "elastic4s")
   .aggregate(
     core,
+    tcp,
+    http,
     embedded,
     testkit,
-    coreTests,
+    tests,
     circe,
     jackson,
     json4s,
@@ -18,12 +20,21 @@ lazy val root = Project("elastic4s", file("."))
 lazy val core = Project("elastic4s-core", file("elastic4s-core"))
   .settings(name := "elastic4s-core")
 
+lazy val tcp = Project("elastic4s-tcp", file("elastic4s-tcp"))
+  .settings(name := "elastic4s-tcp")
+  .dependsOn(core)
+
+lazy val http = Project("elastic4s-http", file("elastic4s-http"))
+  .settings(name := "elastic4s-http")
+    .settings(libraryDependencies += "org.elasticsearch.client" % "rest" % ElasticsearchVersion)
+  .dependsOn(core)
+
 lazy val xpacksecurity = Project("elastic4s-xpack-security", file("elastic4s-xpack-security"))
   .settings(
     name := "elastic4s-xpack-security",
     resolvers += "elastic" at "https://artifacts.elastic.co/maven",
     libraryDependencies += "org.elasticsearch.client" % "x-pack-transport" % ElasticsearchVersion
-  ).dependsOn(core, testkit % "test")
+  ).dependsOn(tcp, testkit % "test")
 
 lazy val embedded = Project("elastic4s-embedded", file("elastic4s-embedded"))
   .settings(
@@ -37,7 +48,7 @@ lazy val embedded = Project("elastic4s-embedded", file("elastic4s-embedded"))
       "org.apache.logging.log4j"              % "log4j-1.2-api"             % Log4jVersion
     )
   )
-  .dependsOn(core)
+  .dependsOn(tcp)
 
 lazy val testkit = Project("elastic4s-testkit", file("elastic4s-testkit"))
   .settings(
@@ -48,18 +59,20 @@ lazy val testkit = Project("elastic4s-testkit", file("elastic4s-testkit"))
   )
   .dependsOn(core, embedded)
 
-lazy val coreTests = Project("elastic4s-core-tests", file("elastic4s-core-tests"))
+lazy val tests = Project("elastic4s-tests", file("elastic4s-tests"))
   .settings(
-    name := "elastic4s-core-tests",
+    name := "elastic4s-tests",
     libraryDependencies ++= Seq(
       "commons-io"                    % "commons-io"              % CommonsIoVersion      % "test",
       "org.mockito"                   % "mockito-all"             % MockitoVersion        % "test",
       "com.fasterxml.jackson.core"    % "jackson-core"            % JacksonVersion        % "test",
       "com.fasterxml.jackson.core"    % "jackson-databind"        % JacksonVersion        % "test",
-      "com.fasterxml.jackson.module"  %% "jackson-module-scala"   % JacksonVersion        % "test" exclude("org.scala-lang", "scala-library")
+      "com.fasterxml.jackson.module"  %% "jackson-module-scala"   % JacksonVersion        % "test" exclude("org.scala-lang", "scala-library"),
+      "org.apache.logging.log4j"      % "log4j-api"               % "2.7"                 % "test",
+      "org.apache.logging.log4j"      % "log4j-slf4j-impl"        % "2.7"                 % "test"
     )
   )
-  .dependsOn(core, testkit % "test")
+  .dependsOn(tcp, http, jackson, testkit % "test")
 
 lazy val streams = Project("elastic4s-streams", file("elastic4s-streams"))
   .settings(
@@ -67,7 +80,7 @@ lazy val streams = Project("elastic4s-streams", file("elastic4s-streams"))
     libraryDependencies += "com.typesafe.akka"        %% "akka-actor"           % AkkaVersion,
     libraryDependencies += "org.reactivestreams"      % "reactive-streams"      % ReactiveStreamsVersion,
     libraryDependencies += "org.reactivestreams"      % "reactive-streams-tck"  % ReactiveStreamsVersion % "test"
-  ).dependsOn(core, testkit % "test", jackson % "test")
+  ).dependsOn(tcp, testkit % "test", jackson % "test")
 
 lazy val jackson = Project("elastic4s-jackson", file("elastic4s-jackson"))
   .settings(

@@ -2,108 +2,57 @@ package com.sksamuel.elastic4s.indexes
 
 import com.sksamuel.elastic4s.bulk.BulkCompatibleDefinition
 import com.sksamuel.elastic4s.mappings.FieldValue
-import com.sksamuel.elastic4s.{FieldsMapper, Indexable}
-import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.action.index.IndexRequest.OpType
-import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
-import org.elasticsearch.common.xcontent.{XContentBuilder, XContentFactory}
-import org.elasticsearch.index.VersionType
+import com.sksamuel.elastic4s.{FieldsMapper, IndexAndType, Indexable}
+import com.sksamuel.exts.OptionImplicits._
 
-import scala.collection.mutable
+object OpType {
+  val Index = "index"
+  val Create = "create"
+}
 
-class IndexDefinition(index: String, `type`: String) extends BulkCompatibleDefinition {
-  require(index != null, "index must not be null or empty")
-  require(`type` != null, "type must not be null or empty")
+object RefreshPolicy {
+  val None = "false"
+  val Wait = "wait_for"
+  val Immediate = "true"
+}
 
-  private val _request = new IndexRequest(index, `type`)
-  private val _fields = mutable.Buffer[FieldValue]()
-  private var _json: Option[String] = None
+case class IndexDefinition(indexAndType: IndexAndType,
+                           id: Option[Any] = None,
+                           opType: Option[String] = None,
+                           refresh: Option[String] = None,
+                           parent: Option[String] = None,
+                           pipeline: Option[String] = None,
+                           routing: Option[String] = None,
+                           timestamp: Option[String] = None,
+                           timeout: Option[String] = None,
+                           version: Option[Long] = None,
+                           fields: Seq[FieldValue] = Nil,
+                           source: Option[String] = None) extends BulkCompatibleDefinition {
+  require(indexAndType != null, "index must not be null or empty")
 
-  def build = _json match {
-    case Some(json) => _request.source(json)
-    case None => _request.source(_fieldsAsXContent)
-  }
+  def doc(json: String): IndexDefinition = source(json)
+  def doc[T: Indexable](t: T): IndexDefinition = source(t)
 
-  def _fieldsAsXContent: XContentBuilder = {
-    val source = XContentFactory.jsonBuilder().startObject()
-    _fields.foreach(_.output(source))
-    source.endObject()
-  }
+  def source(json: String): IndexDefinition = copy(source = json.some)
+  def source[T](t: T)(implicit indexable: Indexable[T]): IndexDefinition = copy(source = indexable.json(t).some)
 
-  def doc(json: String): this.type = source(json)
-  def doc[T: Indexable](t: T): this.type = source(t)
+  def id(id: Any): IndexDefinition = withId(id)
+  def withId(id: Any): IndexDefinition = copy(id = id.some)
 
-  def source(json: String): this.type = {
-    this._json = Option(json)
-    this
-  }
-
-  def source[T](t: T)(implicit indexable: Indexable[T]): this.type = {
-    this._json = Option(indexable.json(t))
-    this
-  }
-
-  def id(id: Any): IndexDefinition = {
-    _request.id(id.toString)
-    this
-  }
-
-  def withId(id: Any): IndexDefinition = {
-    _request.id(id.toString)
-    this
-  }
-
-  def opType(opType: IndexRequest.OpType): IndexDefinition = {
-    _request.opType(opType)
-    this
-  }
-
-  def parent(parent: String): IndexDefinition = {
-    _request.parent(parent)
-    this
-  }
-
-  def refresh(refresh: RefreshPolicy): this.type = {
-    _request.setRefreshPolicy(refresh)
-    this
-  }
-
-  def routing(routing: String): IndexDefinition = {
-    _request.routing(routing)
-    this
-  }
-
-  def timestamp(timestamp: String): IndexDefinition = {
-    _request.timestamp(timestamp)
-    this
-  }
-
-  @deprecated("use createOnly(boolean)", "5.0.0")
-  def update(update: Boolean): IndexDefinition = createOnly(update)
+  def opType(opType: String): IndexDefinition = copy(opType = opType.some)
+  def pipeline(pipeline: String): IndexDefinition = copy(pipeline = pipeline.some)
+  def parent(parent: String): IndexDefinition = copy(parent = parent.some)
+  def refresh(refresh: String): IndexDefinition = copy(refresh = refresh.some)
+  def timestamp(timestamp: String): IndexDefinition = copy(timestamp = timestamp.some)
+  def routing(routing: String): IndexDefinition = copy(routing = routing.some)
+  def version(version: Long): IndexDefinition = copy(version = version.some)
+  def version(timeout: String): IndexDefinition = copy(timeout = timeout.some)
 
   // if set to true then trying to update a document will fail
-  def createOnly(createOnly: Boolean): IndexDefinition = if (createOnly) opType(OpType.CREATE) else opType(OpType.INDEX)
-
-  def version(version: Long): IndexDefinition = {
-    _request.version(version)
-    this
-  }
-
-  def versionType(versionType: VersionType): IndexDefinition = {
-    _request.versionType(versionType)
-    this
-  }
-
-  def fields(fields: Map[String, Any]): IndexDefinition = {
-    _fields ++= FieldsMapper.mapFields(fields)
-    this
-  }
+  def createOnly(createOnly: Boolean): IndexDefinition = if (createOnly) opType(OpType.Create) else opType(OpType.Index)
 
   def fields(_fields: (String, Any)*): IndexDefinition = fields(_fields.toMap)
   def fields(_fields: Iterable[(String, Any)]): IndexDefinition = fields(_fields.toMap)
-
-  def fieldValues(fields: FieldValue*): IndexDefinition = {
-    _fields ++= fields
-    this
-  }
+  def fields(fields: Map[String, Any]): IndexDefinition = copy(fields = FieldsMapper.mapFields(fields))
+  def fieldValues(fields: FieldValue*): IndexDefinition = copy(fields = fields)
 }

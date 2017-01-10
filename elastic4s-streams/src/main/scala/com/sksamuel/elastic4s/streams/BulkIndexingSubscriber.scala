@@ -84,7 +84,7 @@ class BulkActor[T](client: ElasticClient,
                    builder: RequestBuilder[T],
                    typedConfig: TypedSubscriberConfig[T]) extends Actor {
 
-  import com.sksamuel.elastic4s.ElasticDsl._
+  import com.sksamuel.elastic4s.TransportDsl._
   import context.{dispatcher, system}
   import typedConfig.{ baseConfig => config }
 
@@ -220,7 +220,7 @@ class BulkActor[T](client: ElasticClient,
       val retryOriginals = filterByIndexes(originals, failureIds)
       val failedReqs = filterByIndexes(req.requests, failureIds)
 
-      (BulkDefinition(failedReqs).refresh(policy), retryOriginals)
+      (BulkDefinition(failedReqs).refresh(policy.name), retryOriginals)
     }
 
     client.execute(req).onComplete {
@@ -257,7 +257,7 @@ class BulkActor[T](client: ElasticClient,
     def bulkDef: BulkDefinition = {
       val defs = buffer.map(t => builder.request(t))
       val policy = if (config.refreshAfterOp) RefreshPolicy.IMMEDIATE else RefreshPolicy.NONE
-      BulkDefinition(defs).refresh(policy)
+      BulkDefinition(defs).refresh(policy.name)
     }
 
     sent = sent + buffer.size

@@ -29,11 +29,13 @@ class LocalNode(settings: Settings, plugins: List[Class[_ <: Plugin]])
     }
   })
 
-  val nodeId = client().admin().cluster().prepareState().get().getState().getNodes().getLocalNodeId()
+  val nodeId = client().admin().cluster().prepareState().get().getState.getNodes.getLocalNodeId
 
   val ipAndPort = client().admin().cluster().prepareNodesInfo(nodeId).get()
-    .getNodes().iterator().next().getHttp().address().publishAddress().toString()
+    .getNodes.iterator().next().getHttp.address().publishAddress().toString
   logger.info(s"LocalNode started @ $ipAndPort")
+
+  val ip: Int = ipAndPort.dropWhile(_ != ':').drop(1).toInt
 
   def stop(removeData: Boolean = false) = {
     super.close()
