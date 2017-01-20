@@ -1,12 +1,11 @@
 package com.sksamuel.elastic4s.bulk
 
-import com.sksamuel.elastic4s.indexes.RefreshPolicy
+import com.sksamuel.elastic4s.RefreshPolicy
 import com.sksamuel.elastic4s.testkit.ElasticSugar
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.duration._
 
-/** @author Stephen Samuel */
 class BulkDslTest extends FlatSpec with Matchers with ElasticSugar {
 
   "the bulk dsl" should "accept index and delete types" in {

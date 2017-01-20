@@ -1,29 +1,18 @@
 package com.sksamuel.elastic4s.searches
 
-import org.elasticsearch.search.rescore.{QueryRescoreMode, RescoreBuilder}
+import com.sksamuel.elastic4s.searches.queries.QueryDefinition
+import com.sksamuel.exts.OptionImplicits._
 
-case class RescoreDefinition(query: QueryDefinition) {
+case class RescoreDefinition(query: QueryDefinition,
+                             windowSize: Option[Int] = None,
+                             restoreQueryWeight: Option[Double] = None,
+                             originalQueryWeight: Option[Double] = None,
+                             scoreMode: Option[String] = None) {
 
-  val builder = RescoreBuilder.queryRescorer(query.builder)
+  def window(size: Int): RescoreDefinition = copy(windowSize = size.some)
 
-  def window(size: Int): RescoreDefinition = {
-    builder.windowSize(size)
-    this
-  }
+  def originalQueryWeight(weight: Double): RescoreDefinition = copy(originalQueryWeight = weight.some)
+  def rescoreQueryWeight(weight: Double): RescoreDefinition = copy(restoreQueryWeight = weight.some)
 
-  def originalQueryWeight(weight: Double): RescoreDefinition = {
-    builder.setQueryWeight(weight.toFloat)
-    this
-  }
-
-  def rescoreQueryWeight(weight: Double): RescoreDefinition = {
-    builder.setRescoreQueryWeight(weight.toFloat)
-    this
-  }
-
-  def scoreMode(mode: String): RescoreDefinition = scoreMode(QueryRescoreMode.valueOf(mode))
-  def scoreMode(mode: QueryRescoreMode): RescoreDefinition = {
-    builder.setScoreMode(mode)
-    this
-  }
+  def scoreMode(mode: String): RescoreDefinition = copy(scoreMode = mode.some)
 }

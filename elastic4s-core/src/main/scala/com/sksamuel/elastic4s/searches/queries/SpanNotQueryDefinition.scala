@@ -1,35 +1,18 @@
 package com.sksamuel.elastic4s.searches.queries
 
-import com.sksamuel.elastic4s.searches.QueryDefinition
-import org.elasticsearch.index.query.QueryBuilders
+import com.sksamuel.exts.OptionImplicits._
 
 case class SpanNotQueryDefinition(include: SpanQueryDefinition,
-                                  exclude: SpanQueryDefinition) extends QueryDefinition {
+                                  exclude: SpanQueryDefinition,
+                                  dist: Option[Int] = None,
+                                  pre: Option[Int] = None,
+                                  post: Option[Int] = None,
+                                  boost: Option[Double] = None,
+                                  queryName: Option[String] = None) extends QueryDefinition {
 
-  val builder = QueryBuilders.spanNotQuery(include.builder, exclude.builder)
-
-  def boost(boost: Double): this.type = {
-    builder.boost(boost.toFloat)
-    this
-  }
-
-  def dist(dist: Int): this.type = {
-    builder.dist(dist)
-    this
-  }
-
-  def pre(pre: Int): this.type = {
-    builder.pre(pre)
-    this
-  }
-
-  def post(post: Int): this.type = {
-    builder.post(post)
-    this
-  }
-
-  def queryName(queryName: String): this.type = {
-    builder.queryName(queryName)
-    this
-  }
+  def boost(boost: Double): SpanNotQueryDefinition = copy(boost = Option(boost))
+  def queryName(queryName: String): SpanNotQueryDefinition = copy(queryName = queryName.some)
+  def post(post: Int): SpanNotQueryDefinition = copy(post = post.some)
+  def pre(pre: Int): SpanNotQueryDefinition = copy(pre = pre.some)
+  def dist(dist: Int): SpanNotQueryDefinition = copy(dist = dist.some)
 }

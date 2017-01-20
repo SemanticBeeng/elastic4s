@@ -1,45 +1,28 @@
 package com.sksamuel.elastic4s.searches.queries
 
-import com.sksamuel.elastic4s.DefinitionAttributes.{DefinitionAttributeBoost, DefinitionAttributeCutoffFrequency}
 import com.sksamuel.elastic4s.analyzers.Analyzer
-import com.sksamuel.elastic4s.searches.QueryDefinition
-import org.elasticsearch.index.query.{Operator, QueryBuilders}
+import com.sksamuel.exts.OptionImplicits._
 
-case class CommonTermsQueryDefinition(name: String, text: String)
-  extends QueryDefinition
-    with DefinitionAttributeBoost
-    with DefinitionAttributeCutoffFrequency {
+case class CommonTermsQueryDefinition(name: String,
+                                      text: String,
+                                      lowFreqMinimumShouldMatch: Option[Int] = None,
+                                      highFreqMinimumShouldMatch: Option[Int] = None,
+                                      cutoffFrequency: Option[Double] = None,
+                                      queryName: Option[String] = None,
+                                      boost: Option[Double] = None,
+                                      highFreqOperator: Option[String] = None,
+                                      lowFreqOperator: Option[String] = None,
+                                      analyzer: Option[String] = None)
+  extends QueryDefinition {
 
-  val builder = QueryBuilders.commonTermsQuery(name, text)
-  val _builder = builder
+  def boost(boost: Double): CommonTermsQueryDefinition = copy(boost = Some(boost))
+  def queryName(queryName: String): CommonTermsQueryDefinition = copy(queryName = Some(queryName))
+  def cutoffFrequency(freq: Double): CommonTermsQueryDefinition = copy(cutoffFrequency = freq.some)
 
-  def queryName(queryName: String): CommonTermsQueryDefinition = {
-    builder.queryName(queryName)
-    this
-  }
-
-  def highFreqMinimumShouldMatch(highFreqMinimumShouldMatch: Int): CommonTermsQueryDefinition = {
-    builder.highFreqMinimumShouldMatch(highFreqMinimumShouldMatch.toString)
-    this
-  }
-
-  def highFreqOperator(operator: String): CommonTermsQueryDefinition = {
-    builder.highFreqOperator(if (operator.toLowerCase == "and") Operator.AND else Operator.OR)
-    this
-  }
-
-  def analyzer(analyzer: Analyzer): CommonTermsQueryDefinition = {
-    builder.analyzer(analyzer.name)
-    this
-  }
-
-  def lowFreqMinimumShouldMatch(lowFreqMinimumShouldMatch: Int): CommonTermsQueryDefinition = {
-    builder.lowFreqMinimumShouldMatch(lowFreqMinimumShouldMatch.toString)
-    this
-  }
-
-  def lowFreqOperator(operator: String): CommonTermsQueryDefinition = {
-    builder.lowFreqOperator(if (operator.toLowerCase == "and") Operator.AND else Operator.OR)
-    this
-  }
+  def lowFreqMinimumShouldMatch(freq: Int): CommonTermsQueryDefinition = copy(lowFreqMinimumShouldMatch = Some(freq))
+  def highFreqMinimumShouldMatch(freq: Int): CommonTermsQueryDefinition = copy(highFreqMinimumShouldMatch = Some(freq))
+  def highFreqOperator(op: String): CommonTermsQueryDefinition = copy(highFreqOperator = Some(op))
+  def lowFreqOperator(op: String): CommonTermsQueryDefinition = copy(lowFreqOperator = Some(op))
+  def analyzer(a: Analyzer): CommonTermsQueryDefinition = analyzer(a.name)
+  def analyzer(name: String): CommonTermsQueryDefinition = copy(analyzer = name.some)
 }

@@ -1,60 +1,28 @@
 package com.sksamuel.elastic4s.searches.queries
 
-import com.sksamuel.elastic4s.DefinitionAttributes.DefinitionAttributeBoost
-import org.elasticsearch.index.query.QueryBuilders
+import com.sksamuel.exts.OptionImplicits._
 
-case class RangeQueryDefinition(field: String) extends MultiTermQueryDefinition with DefinitionAttributeBoost {
+case class RangeQueryDefinition(field: String,
+                                boost: Option[Double] = None,
+                                timeZone: Option[String] = None,
+                                includeUpper: Option[Boolean] = None,
+                                includeLower: Option[Boolean] = None,
+                                lte: Option[String] = None,
+                                gte: Option[String] = None,
+                                from: Option[Any] = None,
+                                to: Option[Any] = None,
+                                queryName: Option[String] = None)
+  extends MultiTermQueryDefinition {
 
-  val builder = QueryBuilders.rangeQuery(field)
-  val _builder = builder
-
-  def from(f: Any) = {
-    builder.from(f)
-    this
-  }
-
-  def to(t: Any) = {
-    builder.to(t)
-    this
-  }
-
-  def timeZone(timeZone: String): RangeQueryDefinition = {
-    builder.timeZone(timeZone)
-    this
-  }
-
-  def gte(d: String): RangeQueryDefinition = {
-    builder.gte(d)
-    this
-  }
-
-  def gte(d: Double): RangeQueryDefinition = {
-    builder.gte(d)
-    this
-  }
-
-  def lte(d: String): RangeQueryDefinition = {
-    builder.lte(d)
-    this
-  }
-
-  def lte(d: Double): RangeQueryDefinition = {
-    builder.lte(d)
-    this
-  }
-
-  def includeLower(includeLower: Boolean) = {
-    builder.includeLower(includeLower)
-    this
-  }
-
-  def includeUpper(includeUpper: Boolean) = {
-    builder.includeUpper(includeUpper)
-    this
-  }
-
-  def queryName(queryName: String): this.type = {
-    builder.queryName(queryName)
-    this
-  }
+  def boost(boost: Double): RangeQueryDefinition = copy(boost = boost.some)
+  def from(f: Any): RangeQueryDefinition = copy(from = f.some)
+  def to(to: Any): RangeQueryDefinition = copy(to = to.some)
+  def gte(gte: String): RangeQueryDefinition = copy(gte = gte.some)
+  def gte(gte: Double): RangeQueryDefinition = copy(gte = gte.toString.some)
+  def lte(lte: String): RangeQueryDefinition = copy(lte = lte.some)
+  def lte(lte: Double): RangeQueryDefinition = copy(lte = lte.toString.some)
+  def includeUpper(includeUpper: Boolean): RangeQueryDefinition = copy(includeUpper = includeUpper.some)
+  def includeLower(includeLower: Boolean): RangeQueryDefinition = copy(includeLower = includeLower.some)
+  def timeZone(timeZone: String): RangeQueryDefinition = copy(timeZone = timeZone.some)
+  def queryName(queryName: String): RangeQueryDefinition = copy(queryName = queryName.some)
 }

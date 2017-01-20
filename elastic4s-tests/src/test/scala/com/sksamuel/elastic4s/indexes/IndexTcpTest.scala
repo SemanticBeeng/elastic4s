@@ -1,9 +1,10 @@
 package com.sksamuel.elastic4s.indexes
 
-import com.sksamuel.elastic4s.Indexable
+import com.sksamuel.elastic4s.{Indexable, RefreshPolicy}
 import com.sksamuel.elastic4s.testkit.ElasticSugar
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
+
 import scala.collection.JavaConverters._
 
 case class Phone(name: String, speed: String)
@@ -30,7 +31,7 @@ class IndexTcpTest extends WordSpec with MockitoSugar with ElasticSugar with Mat
       indexInto("electronics" / "phone").source(phone)
     ).refresh(RefreshPolicy.Immediate)
   }
-  blockUntilCount(4, "electronics")
+  blockUntilCount(6, "electronics")
 
   "an index request" should {
     "index fields" in {

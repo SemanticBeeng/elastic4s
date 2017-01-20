@@ -1,23 +1,12 @@
 package com.sksamuel.elastic4s.searches.queries
 
-import com.sksamuel.elastic4s.searches.QueryDefinition
-import org.elasticsearch.index.query.QueryBuilders
+import com.sksamuel.exts.OptionImplicits._
 
-case class TermQueryDefinition(field: String, value: Any) extends QueryDefinition {
+case class TermQueryDefinition(field: String,
+                               value: Any,
+                               boost: Option[Double] = None,
+                               queryName: Option[String] = None) extends QueryDefinition {
 
-  val builder = value match {
-    case str: String => QueryBuilders.termQuery(field, str)
-    case iter: Iterable[Any] => QueryBuilders.termQuery(field, iter.toArray)
-    case other => QueryBuilders.termQuery(field, other)
-  }
-
-  def boost(boost: Double) = {
-    builder.boost(boost.toFloat)
-    this
-  }
-
-  def queryName(queryName: String): this.type = {
-    builder.queryName(queryName)
-    this
-  }
+  def boost(boost: Double): TermQueryDefinition = copy(boost = boost.some)
+  def queryName(queryName: String): TermQueryDefinition = copy(queryName = queryName.some)
 }

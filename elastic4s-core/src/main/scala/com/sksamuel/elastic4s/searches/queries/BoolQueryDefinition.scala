@@ -1,76 +1,42 @@
 package com.sksamuel.elastic4s.searches.queries
 
-import com.sksamuel.elastic4s.searches.QueryDefinition
-import org.elasticsearch.index.query.QueryBuilders
+import com.sksamuel.exts.OptionImplicits._
 
-class BoolQueryDefinition extends QueryDefinition {
+case class BoolQueryDefinition(
+                                adjustPureNegative: Option[Boolean] = None,
+                                boost: Option[Double] = None,
+                                disableCoord: Option[Boolean] = None,
+                                minimumShouldMatch: Option[String] = None,
+                                queryName: Option[String] = None,
+                                filters: Seq[QueryDefinition] = Nil,
+                                must: Seq[QueryDefinition] = Nil,
+                                not: Seq[QueryDefinition] = Nil,
+                                should: Seq[QueryDefinition] = Nil
+                              ) extends QueryDefinition {
 
-  val builder = QueryBuilders.boolQuery()
+  def adjustPureNegative(adjustPureNegative: Boolean): BoolQueryDefinition =
+    copy(adjustPureNegative = adjustPureNegative.some)
 
-  def adjustPureNegative(adjustPureNegative: Boolean): this.type = {
-    builder.adjustPureNegative(adjustPureNegative)
-    this
-  }
+  def boost(boost: Double): BoolQueryDefinition =
+    copy(boost = boost.some)
 
-  def boost(boost: Double): this.type = {
-    builder.boost(boost.toFloat)
-    this
-  }
+  def disableCoord(disableCoord: Boolean): BoolQueryDefinition =
+    copy(disableCoord = disableCoord.some)
 
-  def disableCoord(disableCoord: Boolean): this.type = {
-    builder.disableCoord(disableCoord: Boolean)
-    this
-  }
+  def filter(first: QueryDefinition, rest: QueryDefinition*): BoolQueryDefinition = filter(first +: rest)
+  def filter(queries: Iterable[QueryDefinition]): BoolQueryDefinition = copy(filters = queries.toSeq)
 
-  def filter(first: QueryDefinition, rest: QueryDefinition*): this.type = filter(first +: rest)
+  def minimumShouldMatch(min: Int): BoolQueryDefinition = copy(minimumShouldMatch = min.toString.some)
+  def minimumShouldMatch(min: String): BoolQueryDefinition = copy(minimumShouldMatch = min.some)
 
-  def filter(queries: Iterable[QueryDefinition]): this.type = {
-    queries.foreach(builder filter _.builder)
-    this
-  }
+  def must(queries: QueryDefinition*): BoolQueryDefinition = must(queries)
+  def must(queries: Iterable[QueryDefinition]): BoolQueryDefinition = copy(must = queries.toIndexedSeq)
 
-  def minimumShouldMatch(minimumShouldMatch: String): this.type = {
-    builder.minimumShouldMatch(minimumShouldMatch: String)
-    this
-  }
+  def not(queries: QueryDefinition*): BoolQueryDefinition = not(queries)
+  def not(queries: Iterable[QueryDefinition]): BoolQueryDefinition = copy(not = queries.toSeq)
 
-  def minimumShouldMatch(minimumNumberShouldMatch: Int): this.type = {
-    builder.minimumNumberShouldMatch(minimumNumberShouldMatch: Int)
-    this
-  }
+  def should(queries: QueryDefinition*): BoolQueryDefinition = should(queries)
+  def should(queries: Iterable[QueryDefinition]): BoolQueryDefinition = copy(should = queries.toSeq)
 
-  def must(queries: QueryDefinition*): this.type = {
-    queries.foreach(builder must _.builder)
-    this
-  }
-
-  def must(queries: Iterable[QueryDefinition]): this.type = {
-    queries.foreach(builder must _.builder)
-    this
-  }
-
-  def not(queries: QueryDefinition*): this.type = {
-    queries.foreach(builder mustNot _.builder)
-    this
-  }
-
-  def not(queries: Iterable[QueryDefinition]): this.type = {
-    queries.foreach(builder mustNot _.builder)
-    this
-  }
-
-  def should(queries: QueryDefinition*): this.type = {
-    queries.foreach(builder should _.builder)
-    this
-  }
-
-  def should(queries: Iterable[QueryDefinition]): this.type = {
-    queries.foreach(builder should _.builder)
-    this
-  }
-
-  def queryName(queryName: String): this.type = {
-    builder.queryName(queryName)
-    this
-  }
+  def queryName(queryName: String): BoolQueryDefinition = copy(queryName = queryName.some)
 }

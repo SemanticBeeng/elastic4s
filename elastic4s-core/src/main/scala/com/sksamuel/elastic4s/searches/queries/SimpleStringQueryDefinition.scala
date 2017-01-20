@@ -1,73 +1,35 @@
 package com.sksamuel.elastic4s.searches.queries
 
+import com.sksamuel.elastic4s.SimpleQueryStringFlag
 import com.sksamuel.elastic4s.analyzers.Analyzer
-import com.sksamuel.elastic4s.searches.QueryDefinition
-import org.elasticsearch.index.query.{Operator, QueryBuilders, SimpleQueryStringBuilder, SimpleQueryStringFlag}
+import com.sksamuel.exts.OptionImplicits._
 
-case class SimpleStringQueryDefinition(query: String) extends QueryDefinition {
+case class SimpleStringQueryDefinition(query: String,
+                                       analyzer: Option[String] = None,
+                                       analyzeWildcard: Option[Boolean] = None,
+                                       operator: Option[String] = None,
+                                       queryName: Option[String] = None,
+                                       lenient: Option[Boolean] = None,
+                                       fields: Seq[(String, Double)] = Nil,
+                                       flags: Seq[SimpleQueryStringFlag] = Nil,
+                                       minimumShouldMatch: Option[Int] = None
+                                      ) extends QueryDefinition {
 
-  val builder = QueryBuilders.simpleQueryStringQuery(query)
+  def flags(flags: SimpleQueryStringFlag*): SimpleStringQueryDefinition = copy(flags = flags)
+  def analyzer(analyzer: String): SimpleStringQueryDefinition = copy(analyzer = analyzer.some)
+  def analyzer(analyzer: Analyzer): SimpleStringQueryDefinition = copy(analyzer = analyzer.name.some)
+  def queryName(queryName: String): SimpleStringQueryDefinition = copy(queryName = queryName.some)
+  def defaultOperator(op: String): SimpleStringQueryDefinition = copy(operator = op.some)
 
-  def analyzer(analyzer: String): SimpleStringQueryDefinition = {
-    builder.analyzer(analyzer)
-    this
-  }
+  def lenient(lenient: Boolean): SimpleStringQueryDefinition = copy(lenient = lenient.some)
 
-  def analyzer(analyzer: Analyzer): SimpleStringQueryDefinition = {
-    builder.analyzer(analyzer.name)
-    this
-  }
+  def minimumShouldMatch(minimumShouldMatch: Int): SimpleStringQueryDefinition =
+    copy(minimumShouldMatch = minimumShouldMatch.some)
 
-  def queryName(queryName: String): SimpleStringQueryDefinition = {
-    builder.queryName(queryName)
-    this
-  }
+  def analyzeWildcard(analyzeWildcard: Boolean): SimpleStringQueryDefinition =
+    copy(analyzeWildcard = analyzeWildcard.some)
 
-  def defaultOperator(op: String): SimpleStringQueryDefinition = {
-    op match {
-      case "AND" => builder.defaultOperator(Operator.AND)
-      case _ => builder.defaultOperator(Operator.OR)
-    }
-    this
-  }
-
-  def lenient(lenient: Boolean): SimpleStringQueryDefinition = {
-    builder.lenient(lenient)
-    this
-  }
-
-  def minimumShouldMatch(minimumShouldMatch: Int): SimpleStringQueryDefinition = {
-    builder.minimumShouldMatch(minimumShouldMatch.toString)
-    this
-  }
-
-  def analyzeWildcard(analyzeWildcard: Boolean): SimpleStringQueryDefinition = {
-    builder.analyzeWildcard(analyzeWildcard)
-    this
-  }
-
-  def defaultOperator(d: Operator): SimpleStringQueryDefinition = {
-    builder.defaultOperator(d)
-    this
-  }
-
-  def asfields(fields: String*): SimpleStringQueryDefinition = {
-    fields foreach field
-    this
-  }
-
-  def field(name: String): SimpleStringQueryDefinition = {
-    builder.field(name)
-    this
-  }
-
-  def field(name: String, boost: Double): SimpleStringQueryDefinition = {
-    builder.field(name, boost.toFloat)
-    this
-  }
-
-  def flags(flags: SimpleQueryStringFlag*): SimpleStringQueryDefinition = {
-    builder.flags(flags: _*)
-    this
-  }
+  def asfields(fields: String*): SimpleStringQueryDefinition = copy(fields = this.fields ++ fields.map(f => (f, -1D)))
+  def field(name: String): SimpleStringQueryDefinition = copy(fields = fields :+ (name, -1D))
+  def field(name: String, boost: Double): SimpleStringQueryDefinition = copy(fields = fields :+ (name, boost))
 }

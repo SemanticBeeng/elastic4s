@@ -1,141 +1,91 @@
 package com.sksamuel.elastic4s.searches.queries
 
-import com.sksamuel.elastic4s.DefinitionAttributes.{DefinitionAttributeBoost, DefinitionAttributeRewrite}
 import com.sksamuel.elastic4s.analyzers.Analyzer
-import com.sksamuel.elastic4s.searches.QueryDefinition
-import org.elasticsearch.index.query.{Operator, QueryBuilders}
+import com.sksamuel.exts.OptionImplicits._
 
-case class QueryStringQueryDefinition(query: String)
-  extends QueryDefinition
-    with DefinitionAttributeRewrite
-    with DefinitionAttributeBoost {
+case class QueryStringQueryDefinition(query: String,
+                                      allowLeadingWildcard: Option[Boolean] = None,
+                                      analyzeWildcard: Option[Boolean] = None,
+                                      analyzer: Option[String] = None,
+                                      autoGeneratePhraseQueries: Option[Boolean] = None,
+                                      boost: Option[Double] = None,
+                                      defaultOperator: Option[String] = None,
+                                      defaultField: Option[String] = None,
+                                      enablePositionIncrements: Option[Boolean] = None,
+                                      fields: Seq[(String, Float)] = Nil,
+                                      fuzzyMaxExpansions: Option[Int] = None,
+                                      fuzzyPrefixLength: Option[Int] = None,
+                                      fuzzyRewrite: Option[String] = None,
+                                      lenient: Option[Boolean] = None,
+                                      minimumShouldMatch: Option[Int] = None,
+                                      phraseSlop: Option[Int] = None,
+                                      quoteFieldSuffix: Option[String] = None,
+                                      queryName: Option[String] = None,
+                                      rewrite: Option[String] = None,
+                                      splitOnWhitespace: Option[Boolean] = None,
+                                      tieBreaker: Option[Double] = None
+                                     )
+  extends QueryDefinition {
 
-  val builder = QueryBuilders.queryStringQuery(query)
-  val _builder = builder
+  def rewrite(rewrite: String): QueryStringQueryDefinition = copy(rewrite = rewrite.some)
+  def boost(boost: Double): QueryStringQueryDefinition = copy(boost = boost.some)
 
-  def analyzer(analyzer: String): this.type = {
-    builder.analyzer(analyzer)
-    this
-  }
+  def analyzer(a: String): QueryStringQueryDefinition = copy(analyzer = a.some)
+  def analyzer(a: Analyzer): QueryStringQueryDefinition = analyzer(a.name)
 
-  def analyzer(analyzer: Analyzer): this.type = {
-    builder.analyzer(analyzer.name)
-    this
-  }
+  def defaultOperator(op: String): QueryStringQueryDefinition = copy(defaultOperator = op.some)
+  def operator(op: String): QueryStringQueryDefinition = defaultOperator(op)
 
-  def defaultOperator(op: String): this.type = {
-    op.toUpperCase match {
-      case "AND" => builder.defaultOperator(Operator.AND)
-      case _ => builder.defaultOperator(Operator.OR)
-    }
-    this
-  }
+  def asfields(fields: String*): QueryStringQueryDefinition = copy(fields = fields.map(f => (f, -1F)))
 
-  def defaultOperator(op: Operator): this.type = {
-    builder.defaultOperator(op)
-    this
-  }
+  def splitOnWhitespace(splitOnWhitespace: Boolean): QueryStringQueryDefinition =
+    copy(splitOnWhitespace = splitOnWhitespace.some)
 
-  def asfields(fields: String*): this.type = {
-    fields foreach field
-    this
-  }
+  def queryName(queryName: String): QueryStringQueryDefinition =
+    copy(queryName = queryName.some)
 
-  @deprecated("Lowercase expanded terms has been deprecated by Elasticsearch", "5.1.1")
-  def lowercaseExpandedTerms(lowercaseExpandedTerms: Boolean): this.type = {
-    this
-  }
+  def fuzzyPrefixLength(fuzzyPrefixLength: Int): QueryStringQueryDefinition =
+    copy(fuzzyPrefixLength = fuzzyPrefixLength.some)
 
-  def splitOnWhitespace(splitOnWhitespace: Boolean): this.type = {
-    builder.splitOnWhitespace(splitOnWhitespace)
-    this
-  }
+  def fuzzyMaxExpansions(fuzzyMaxExpansions: Int): QueryStringQueryDefinition =
+    copy(fuzzyMaxExpansions = fuzzyMaxExpansions.some)
 
-  def queryName(queryName: String): this.type = {
-    builder.queryName(queryName)
-    this
-  }
+  def fuzzyRewrite(fuzzyRewrite: String): QueryStringQueryDefinition =
+    copy(fuzzyRewrite = fuzzyRewrite.some)
 
-  def fuzzyPrefixLength(fuzzyPrefixLength: Int): this.type = {
-    builder.fuzzyPrefixLength(fuzzyPrefixLength)
-    this
-  }
+  def tieBreaker(tieBreaker: Double): QueryStringQueryDefinition =
+    copy(tieBreaker = tieBreaker.some)
 
-  def fuzzyMaxExpansions(fuzzyMaxExpansions: Int): this.type = {
-    builder.fuzzyMaxExpansions(fuzzyMaxExpansions)
-    this
-  }
+  def allowLeadingWildcard(allowLeadingWildcard: Boolean): QueryStringQueryDefinition =
+    copy(allowLeadingWildcard = allowLeadingWildcard.some)
 
-  def fuzzyRewrite(fuzzyRewrite: String): this.type = {
-    builder.fuzzyRewrite(fuzzyRewrite)
-    this
-  }
 
-  def tieBreaker(tieBreaker: Double): this.type = {
-    builder.tieBreaker(tieBreaker.toFloat)
-    this
-  }
+  def lenient(lenient: Boolean): QueryStringQueryDefinition =
+    copy(lenient = lenient.some)
 
-  def allowLeadingWildcard(allowLeadingWildcard: Boolean): this.type = {
-    builder.allowLeadingWildcard(allowLeadingWildcard)
-    this
-  }
+  def minimumShouldMatch(minimumShouldMatch: Int): QueryStringQueryDefinition =
+    copy(minimumShouldMatch = minimumShouldMatch.some)
 
-  def lenient(lenient: Boolean): this.type = {
-    builder.lenient(lenient)
-    this
-  }
+  def enablePositionIncrements(enablePositionIncrements: Boolean): QueryStringQueryDefinition =
+    copy(enablePositionIncrements = enablePositionIncrements.some)
 
-  def minimumShouldMatch(minimumShouldMatch: Int): this.type = {
-    builder.minimumShouldMatch(minimumShouldMatch.toString)
-    this
-  }
+  def quoteFieldSuffix(quoteFieldSuffix: String): QueryStringQueryDefinition =
+    copy(quoteFieldSuffix = quoteFieldSuffix.some)
 
-  def enablePositionIncrements(enablePositionIncrements: Boolean): this.type = {
-    builder.enablePositionIncrements(enablePositionIncrements)
-    this
-  }
+  def field(name: String): QueryStringQueryDefinition =
+    copy(fields = fields :+ (name, -1F))
 
-  def quoteFieldSuffix(quoteFieldSuffix: String): this.type = {
-    builder.quoteFieldSuffix(quoteFieldSuffix)
-    this
-  }
+  def field(name: String, boost: Double): QueryStringQueryDefinition =
+    copy(fields = fields :+ (name, boost.toFloat))
 
-  def field(name: String): this.type = {
-    builder.field(name)
-    this
-  }
+  def defaultField(field: String): QueryStringQueryDefinition =
+    copy(defaultField = field.some)
 
-  def field(name: String, boost: Double): this.type = {
-    builder.field(name, boost.toFloat)
-    this
-  }
+  def analyzeWildcard(analyzeWildcard: Boolean): QueryStringQueryDefinition =
+    copy(analyzeWildcard = analyzeWildcard.some)
 
-  def defaultField(field: String): this.type = {
-    builder.defaultField(field)
-    this
-  }
+  def autoGeneratePhraseQueries(autoGeneratePhraseQueries: Boolean): QueryStringQueryDefinition =
+    copy(autoGeneratePhraseQueries = autoGeneratePhraseQueries.some)
 
-  def analyzeWildcard(analyzeWildcard: Boolean): this.type = {
-    builder.analyzeWildcard(analyzeWildcard)
-    this
-  }
-
-  def autoGeneratePhraseQueries(autoGeneratePhraseQueries: Boolean): this.type = {
-    builder.autoGeneratePhraseQueries(autoGeneratePhraseQueries)
-    this
-  }
-
-  def operator(op: String): this.type = {
-    op.toLowerCase match {
-      case "and" => builder.defaultOperator(Operator.AND)
-      case _ => builder.defaultOperator(Operator.OR)
-    }
-    this
-  }
-
-  def phraseSlop(phraseSlop: Int): QueryStringQueryDefinition = {
-    builder.phraseSlop(phraseSlop)
-    this
-  }
+  def phraseSlop(phraseSlop: Int): QueryStringQueryDefinition = copy(phraseSlop = phraseSlop.some)
 }

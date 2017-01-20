@@ -1,18 +1,10 @@
 package com.sksamuel.elastic4s.searches.queries
 
-import org.elasticsearch.index.query.QueryBuilders
+case class SpanTermQueryDefinition(field: String,
+                                   value: Any,
+                                   queryName: Option[String] = None,
+                                   boost: Option[Double] = None) extends SpanQueryDefinition {
 
-class SpanTermQueryDefinition(field: String, value: Any) extends SpanQueryDefinition {
-
-  val builder = QueryBuilders.spanTermQuery(field, value.toString)
-
-  def boost(boost: Double) = {
-    builder.boost(boost.toFloat)
-    this
-  }
-
-  def queryName(queryName: String): this.type = {
-    builder.queryName(queryName)
-    this
-  }
+  def boost(boost: Double): SpanTermQueryDefinition = copy(boost = Some(boost))
+  def queryName(queryName: String): SpanTermQueryDefinition = copy(queryName = Some(queryName))
 }

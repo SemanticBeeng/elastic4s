@@ -1,11 +1,10 @@
 package com.sksamuel.elastic4s.searches.queries
 
-import com.sksamuel.elastic4s.searches.QueryDefinition
-import org.elasticsearch.index.query.ConstantScoreQueryBuilder
+import com.sksamuel.exts.OptionImplicits._
 
-case class ConstantScoreDefinition(builder: ConstantScoreQueryBuilder) extends QueryDefinition {
-  def boost(b: Double): QueryDefinition = {
-    builder.boost(b.toFloat)
-    this
-  }
+case class ConstantScoreDefinition(query: QueryDefinition,
+                                   boost: Option[Double] = None,
+                                   queryName: Option[String] = None) extends QueryDefinition {
+  def queryName(queryName: String): ConstantScoreDefinition = copy(queryName = queryName.some)
+  def boost(boost: Double): ConstantScoreDefinition = copy(boost = boost.some)
 }
