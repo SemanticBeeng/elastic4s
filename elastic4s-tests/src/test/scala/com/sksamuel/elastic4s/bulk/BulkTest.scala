@@ -1,18 +1,18 @@
 package com.sksamuel.elastic4s.bulk
 
-import com.sksamuel.elastic4s.testkit.{ElasticMatchers, ElasticSugar}
+import com.sksamuel.elastic4s.testkit.{ElasticMatchers, ElasticSugar, SharedElasticSugar}
 import org.scalatest.FlatSpec
 import org.scalatest.concurrent.Eventually
 
 import scala.concurrent.duration._
 
-class BulkTest extends FlatSpec with ElasticSugar with Eventually with ElasticMatchers {
+class BulkTest extends FlatSpec with SharedElasticSugar with Eventually with ElasticMatchers {
 
   override implicit def patienceConfig = PatienceConfig(timeout = 5.seconds)
   implicit val duration: Duration = 10.seconds
 
   client.execute {
-    index into "transport/air" fields "company" -> "delta" id 99
+    indexInto("transport/air") fields "company" -> "delta" id 99
   }.await
 
   refresh("transport")
@@ -22,10 +22,10 @@ class BulkTest extends FlatSpec with ElasticSugar with Eventually with ElasticMa
 
     client.execute(
       bulk(
-        index into "transport/air" id 1 fields "company" -> "ba",
-        index into "transport/air" id 2 fields "company" -> "aeroflot",
-        index into "transport/air" id 3 fields "company" -> "american air",
-        index into "transport/air" id 4 fields "company" -> "egypt air"
+        indexInto("transport/air") id 1 fields "company" -> "ba",
+        indexInto("transport/air") id 2 fields "company" -> "aeroflot",
+        indexInto("transport/air") id 3 fields "company" -> "american air",
+        indexInto("transport/air") id 4 fields "company" -> "egypt air"
       )
     ).await
 

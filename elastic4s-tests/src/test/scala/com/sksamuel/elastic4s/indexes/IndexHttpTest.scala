@@ -1,14 +1,15 @@
 package com.sksamuel.elastic4s.indexes
 
-import com.sksamuel.elastic4s.{ElasticsearchClientUri, Indexable, RefreshPolicy}
-import com.sksamuel.elastic4s.http.{HttpClient, HttpDsl}
-import com.sksamuel.elastic4s.testkit.ElasticSugar
+import com.sksamuel.elastic4s.{ElasticsearchClientUri, Indexable}
+import com.sksamuel.elastic4s.http.{ElasticDsl, HttpClient}
+import com.sksamuel.elastic4s.testkit.{AbstractElasticSugar, ClassloaderLocalNodeProvider, ElasticSugar, SharedElasticSugar}
+import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.JavaConverters._
 
-class IndexHttpTest extends WordSpec with MockitoSugar with ElasticSugar with Matchers with HttpDsl {
+class IndexHttpTest extends WordSpec with MockitoSugar with SharedElasticSugar with Matchers with ElasticDsl {
 
   import com.sksamuel.elastic4s.jackson.ElasticJackson.Implicits._
 
@@ -35,10 +36,10 @@ class IndexHttpTest extends WordSpec with MockitoSugar with ElasticSugar with Ma
 
   for (req <- requests) {
     http.execute {
-      req.refresh(RefreshPolicy.Immediate)
+      req.refresh(RefreshPolicy.IMMEDIATE)
     }
   }
-  blockUntilCount(4, "electronics")
+  blockUntilCount(7, "electronics")
 
   "an index request" should {
     "index fields" in {

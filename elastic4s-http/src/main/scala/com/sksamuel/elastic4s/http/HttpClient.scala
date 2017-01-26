@@ -10,11 +10,13 @@ import scala.io.Source
 import scala.util.control.NonFatal
 
 trait HttpClient extends Logging {
+
   // returns the underlying java rest client
   def rest: RestClient
 
   def execute[T, U](request: T)(implicit executable: HttpExecutable[T, U], format: JsonFormat[U]): Future[U] = {
     logger.debug(s"Executing $request")
+
     try {
       val fn = executable.execute(rest, request)
       val p = Promise[U]()
@@ -68,10 +70,9 @@ object HttpClient extends Logging {
   }
 }
 
-
 /**
-  *
-  * @tparam T the type of the request object handled by this builder
+  * @tparam T the type of the request object handled by this handler
+  * @tparam U the type of the response object returned by this handler
   */
 trait HttpExecutable[T, U] extends Logging {
   def execute(client: RestClient, request: T): ResponseListener => Any

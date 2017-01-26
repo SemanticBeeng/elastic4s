@@ -16,6 +16,10 @@ trait ElasticSugar extends AbstractElasticSugar with ClassLocalNodeProvider with
   }
 }
 
+trait SharedElasticSugar extends AbstractElasticSugar with ClassloaderLocalNodeProvider {
+  this: Suite with LocalNodeProvider =>
+}
+
 /**
 * Provides helper methods for things like refreshing an index, and blocking until an
 * index has a certain count of documents. These methods are very useful when writing
