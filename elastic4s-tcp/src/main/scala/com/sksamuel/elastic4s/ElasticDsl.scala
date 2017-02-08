@@ -11,10 +11,9 @@ import com.sksamuel.elastic4s.searches._
 import com.sksamuel.elastic4s.searches.aggs._
 import com.sksamuel.elastic4s.searches.aggs.pipeline.PipelineAggregationDsl
 import com.sksamuel.elastic4s.searches.queries._
-import com.sksamuel.elastic4s.searches.queries.funcscorer.ScoreDsl
-import com.sksamuel.elastic4s.searches.sort.{FieldSortDefinition, ScoreSortDefinition, SortDsl}
-import com.sksamuel.elastic4s.searches.suggestions.SuggestionDsl
+import com.sksamuel.elastic4s.searches.sort.{FieldSortDefinition, ScoreSortDefinition}
 import org.elasticsearch.action.search.SearchResponse
+import org.elasticsearch.search.sort.SortOrder
 
 import scala.language.implicitConversions
 
@@ -30,13 +29,9 @@ trait ElasticDsl
     with IndexTemplateDsl
     with PercolateDsl
     with PipelineAggregationDsl
-    with QueryDsl
     with SettingsDsl
-    with ScoreDsl
     with ScrollDsl
-    with SortDsl
     with SnapshotDsl
-    with SuggestionDsl
     with TokenFilterDsl
     with TcpExecutables
     with BuildableTermsQueryImplicits
@@ -175,7 +170,9 @@ trait ElasticDsl
 
   case object score {
     @deprecated("use scoreSort()", "5.0.0")
-    def sort: ScoreSortDefinition = ScoreSortDefinition()
+    def sort = new {
+      def order(order: SortOrder): ScoreSortDefinition = ScoreSortDefinition(order)
+    }
   }
 
   @deprecated("use putMapping(index)", "5.0.0")
@@ -298,11 +295,7 @@ trait ElasticDsl
 
   case object index {
 
-    @deprecated("use indexExists(indexes)", "5.0.0")
-    def exists(indexes: Iterable[String]): IndexExistsDefinition = IndexExistsDefinition(indexes.toSeq)
-
-    @deprecated("use indexExists(indexes)", "5.0.0")
-    def exists(indexes: String*): IndexExistsDefinition = IndexExistsDefinition(indexes)
+    def exists(index: String): IndexExistsDefinition = IndexExistsDefinition(index)
 
     @deprecated("use indexInto(index / type)", "5.0.0")
     def into(indexType: IndexAndTypes): IndexDefinition = IndexDefinition(IndexAndType(indexType.index, indexType.types.head))

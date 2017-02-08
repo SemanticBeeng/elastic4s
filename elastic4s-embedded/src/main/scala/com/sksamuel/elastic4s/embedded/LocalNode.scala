@@ -3,10 +3,11 @@ package com.sksamuel.elastic4s.embedded
 import java.io.File
 import java.nio.file.{Path, Paths}
 
-import com.sksamuel.elastic4s.ElasticClient
+import com.sksamuel.elastic4s.TcpClient
 import com.sksamuel.exts.Logging
 import org.elasticsearch.client.Client
 import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.index.reindex.ReindexPlugin
 import org.elasticsearch.node.Node
 import org.elasticsearch.node.internal.InternalSettingsPreparer
 import org.elasticsearch.percolator.PercolatorPlugin
@@ -29,15 +30,15 @@ class LocalNode(settings: Settings, plugins: List[Class[_ <: Plugin]])
     }
   })
 
-  val nodeId = client().admin().cluster().prepareState().get().getState.getNodes.getLocalNodeId
+  val nodeId: String = client().admin().cluster().prepareState().get().getState.getNodes.getLocalNodeId
 
-  val ipAndPort = client().admin().cluster().prepareNodesInfo(nodeId).get()
+  val ipAndPort: String = client().admin().cluster().prepareNodesInfo(nodeId).get()
     .getNodes.iterator().next().getHttp.address().publishAddress().toString
   logger.info(s"LocalNode started @ $ipAndPort")
 
   val ip: Int = ipAndPort.dropWhile(_ != ':').drop(1).toInt
 
-  def stop(removeData: Boolean = false) = {
+  def stop(removeData: Boolean = false): Any = {
     super.close()
 
     def deleteDir(dir: File): Unit = {
@@ -73,11 +74,11 @@ class LocalNode(settings: Settings, plugins: List[Class[_ <: Plugin]])
   * If shutdownNodeOnClose is true, then the local node will be shutdown once this
   * client is closed. Otherwise you are required to manage the lifecycle of the local node yourself.
   */
-  def elastic4sclient(shutdownNodeOnClose: Boolean = true): ElasticClient =
+  def elastic4sclient(shutdownNodeOnClose: Boolean = true): TcpClient =
     new LocalElasticClient(this, shutdownNodeOnClose)
 }
 
-class LocalElasticClient(node: LocalNode, shutdownNodeOnClose: Boolean) extends ElasticClient {
+class LocalElasticClient(node: LocalNode, shutdownNodeOnClose: Boolean) extends TcpClient {
 
   override val java: Client = {
     node.start()
@@ -95,13 +96,13 @@ object LocalNode {
 
   // creates a LocalNode with all settings provided by the user
   // and using default plugins
-  def apply(settings: Settings) = {
+  def apply(settings: Settings): LocalNode = {
     require(settings.getAsMap.containsKey("cluster.name"))
     require(settings.getAsMap.containsKey("path.home"))
     require(settings.getAsMap.containsKey("path.data"))
     require(settings.getAsMap.containsKey("path.repo"))
 
-    val plugins = List(classOf[Netty3Plugin], classOf[MustachePlugin], classOf[PercolatorPlugin])
+    val plugins = List(classOf[Netty3Plugin], classOf[MustachePlugin], classOf[PercolatorPlugin], classOf[ReindexPlugin])
 
     val mergedSettings = Settings.builder().put(settings)
       .put("transport.type", "local")

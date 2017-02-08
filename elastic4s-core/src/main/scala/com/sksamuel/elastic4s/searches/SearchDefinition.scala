@@ -4,45 +4,47 @@ import com.sksamuel.elastic4s.IndexesAndTypes
 import com.sksamuel.elastic4s.script.ScriptFieldDefinition
 import com.sksamuel.elastic4s.searches.aggs.AggregationDefinition
 import com.sksamuel.elastic4s.searches.queries._
-import com.sksamuel.elastic4s.searches.queries.`match`.MatchAllQueryDefinition
+import com.sksamuel.elastic4s.searches.queries.matches.MatchAllQueryDefinition
+import com.sksamuel.elastic4s.searches.queries.term.TermQueryDefinition
 import com.sksamuel.elastic4s.searches.sort.SortDefinition
 import com.sksamuel.elastic4s.searches.suggestion.SuggestionDefinition
 import com.sksamuel.exts.OptionImplicits._
 import org.elasticsearch.action.search.SearchType
 import org.elasticsearch.action.support.IndicesOptions
 import org.elasticsearch.cluster.routing.Preference
+import org.elasticsearch.search.fetch.subphase.FetchSourceContext
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
-case class Highlight(options: HighlightOptionsDefinition,
-                     fields: Iterable[HighlightFieldDefinition])
-
 case class SearchDefinition(indexesTypes: IndexesAndTypes,
+                            aggs: Seq[AggregationDefinition] = Nil,
+                            explain: Option[Boolean] = None,
+                            fetchContext: Option[FetchSourceContext] = None,
+                            from: Option[Int] = None,
+                            indicesOptions: Option[IndicesOptions] = None,
+                            inners: Seq[InnerHitDefinition] = Nil,
+                            indexBoosts: Seq[(String, Double)] = Nil,
+                            keepAlive: Option[String] = None,
+                            highlight: Option[Highlight] = None,
+                            minScore: Option[Double] = None,
+                            pref: Option[String] = None,
                             query: Option[QueryDefinition] = None,
                             postFilter: Option[QueryDefinition] = None,
-                            minScore: Option[Double] = None,
                             requestCache: Option[Boolean] = None,
-                            storedFields: Seq[String] = Nil,
-                            aggs: Seq[AggregationDefinition] = Nil,
-                            sorts: Seq[SortDefinition[_]] = Nil,
+                            rescorers: Seq[RescoreDefinition] = Nil,
                             scriptFields: Seq[ScriptFieldDefinition] = Nil,
+                            sorts: Seq[SortDefinition] = Nil,
+                            storedFields: Seq[String] = Nil,
                             suggs: Seq[SuggestionDefinition] = Nil,
-                            highlight: Option[Highlight] = None,
-                            explain: Option[Boolean] = None,
-                            from: Option[Int] = None,
                             size: Option[Int] = None,
-                            pref: Option[String] = None,
                             routing: Option[String] = None,
-                            indicesOptions: Option[IndicesOptions] = None,
-                            version: Option[Boolean] = None,
                             stats: Seq[String] = Nil,
+                            searchType: Option[SearchType] = None,
+                            searchAfter: Seq[Any] = Nil,
                             trackScores: Option[Boolean] = None,
                             terminateAfter: Option[Int] = None,
-                            rescorers: Seq[RescoreDefinition] = Nil,
-                            searchType: Option[SearchType] = None,
                             timeout: Option[Duration] = None,
-                            scroll: Option[String] = None,
-                            indexBoosts: Seq[(String, Double)] = Nil
+                            version: Option[Boolean] = None
                            ) {
 
   /** Adds a single string query to this search
@@ -51,27 +53,24 @@ case class SearchDefinition(indexesTypes: IndexesAndTypes,
     */
   def query(string: String): SearchDefinition = query(QueryStringQueryDefinition(string))
 
-  def query(q: QueryDefinition): SearchDefinition = copy(query = q.some)
-
   // adds a query to this search
-  def query(block: => QueryDefinition): SearchDefinition = copy(query = block.some)
+  def query(q: QueryDefinition): SearchDefinition = copy(query = q.some)
 
   def minScore(min: Double): SearchDefinition = copy(minScore = min.some)
 
+  def types(first: String, rest: String*): SearchDefinition = copy(first +: rest)
+  def types(types: Iterable[String]): SearchDefinition =
+    copy(indexesTypes = IndexesAndTypes(indexesTypes.indexes, types.toSeq))
+
   def bool(block: => BoolQueryDefinition): SearchDefinition = query(block)
 
-  /**
-    * Adds a match all query to this search definition
-    */
+  @deprecated("Use matchAllQuery()", "5.2.0")
   def matchAll(): SearchDefinition = query(new MatchAllQueryDefinition)
 
-  // todo restore inner
-  //  def inner(inners: InnerHitDefinition*): SearchDefinition =  inner(inners)
-  //  def inner(inners: Iterable[InnerHitDefinition]): SearchDefinition =  {
-  //    for ( inner <- inners )
-  //      _builder.addInnerHit(inner.name, inner.inner)
-  //    this
-  //  }
+  def inner(first: InnerHitDefinition, rest: InnerHitDefinition*): SearchDefinition = inner(first +: rest)
+  def inner(inners: Iterable[InnerHitDefinition]): SearchDefinition = copy(inners = inners.toSeq)
+
+  def searchAfter(values: Seq[Any]): SearchDefinition = copy(searchAfter = values)
 
   def postFilter(block: => QueryDefinition): SearchDefinition = copy(postFilter = block.some)
 
@@ -86,11 +85,11 @@ case class SearchDefinition(indexesTypes: IndexesAndTypes,
   def aggs(iterable: Iterable[AggregationDefinition]): SearchDefinition = aggregations(iterable)
 
   @deprecated("use sortBy", "5.0.0")
-  def sort(sorts: SortDefinition[_]*): SearchDefinition = sortBy(sorts)
+  def sort(sorts: SortDefinition*): SearchDefinition = sortBy(sorts)
 
-  def sortBy(sorts: SortDefinition[_]*): SearchDefinition = sortBy(sorts)
+  def sortBy(sorts: SortDefinition*): SearchDefinition = sortBy(sorts)
 
-  def sortBy(sorts: Iterable[SortDefinition[_]]): SearchDefinition = copy(sorts = sorts.toSeq)
+  def sortBy(sorts: Iterable[SortDefinition]): SearchDefinition = copy(sorts = sorts.toSeq)
 
   /** This method introduces zero or more script field definitions into the search construction
     *
@@ -123,22 +122,14 @@ case class SearchDefinition(indexesTypes: IndexesAndTypes,
   def suggestion(sugg: SuggestionDefinition): SearchDefinition = suggestions(Seq(sugg))
 
 
-  /** Adds a single prefix query to this search
-    *
-    * @param tuple - the field and prefix value
-    * @return this
-    */
-  def prefix(tuple: (String, Any)) = query(PrefixQueryDefinition(tuple._1, tuple._2))
+  // Adds a single prefix query to this search
+  def prefix(name: String, value: Any): SearchDefinition = query(PrefixQueryDefinition(name, value))
 
-  /** Adds a single regex query to this search
-    *
-    * @param tuple - the field and regex value
-    * @return this
-    */
   @deprecated("use regexQuery(...)", "5.0.0")
-  def regex(tuple: (String, String)) = regexQuery(tuple)
-
+  def regex(tuple: (String, String)): SearchDefinition = regexQuery(tuple)
   def regexQuery(tuple: (String, String)): SearchDefinition = regexQuery(tuple._1, tuple._2)
+
+  // Adds a single regex query to this search
   def regexQuery(field: String, value: String): SearchDefinition = query(RegexQueryDefinition(field, value))
 
   @deprecated("use termQuery()", "5.0.0")
@@ -152,8 +143,7 @@ case class SearchDefinition(indexesTypes: IndexesAndTypes,
     query(q)
     this
   }
-
-  def range(field: String) = query(RangeQueryDefinition(field))
+  def matchAllQuery(): SearchDefinition = query(MatchAllQueryDefinition())
 
   /** Expects a query in json format and sets the query of the search request.
     * i.e. underneath a "query" field if referencing HTTP API
@@ -226,6 +216,7 @@ case class SearchDefinition(indexesTypes: IndexesAndTypes,
   def limit(i: Int): SearchDefinition = size(i)
   def size(i: Int): SearchDefinition = copy(size = i.some)
 
+  @deprecated("Use the elasticsearch enum rather than the elastic4s one", "5.2.0")
   def preference(pref: com.sksamuel.elastic4s.Preference): SearchDefinition = preference(pref.value)
   def preference(pref: Preference): SearchDefinition = preference(pref.`type`)
   def preference(pref: String): SearchDefinition = copy(pref = pref.some)
@@ -235,12 +226,19 @@ case class SearchDefinition(indexesTypes: IndexesAndTypes,
   def rescore(first: RescoreDefinition, rest: RescoreDefinition*): SearchDefinition = rescore(first +: rest)
   def rescore(rescorers: Iterable[RescoreDefinition]): SearchDefinition = copy(rescorers = rescorers.toSeq)
 
-  def scroll(keepAlive: String): SearchDefinition = copy(scroll = keepAlive.some)
+  def scroll(keepAlive: String): SearchDefinition = copy(keepAlive = keepAlive.some)
 
-  def searchType(searchType: SearchType) = copy(searchType = searchType.some)
+  def searchType(searchType: SearchType): SearchDefinition = copy(searchType = searchType.some)
 
   def version(version: Boolean): SearchDefinition = copy(version = version.some)
 
+  /**
+    * The maximum number of documents to collect for each shard,
+    * upon reaching which the query execution will terminate early.
+    * If set, the response will have a boolean field terminated_early
+    * to indicate whether the query execution has actually terminated
+    * early. Defaults to no.
+    */
   def terminateAfter(terminateAfter: Int): SearchDefinition = copy(terminateAfter = terminateAfter.some)
 
   def indexBoost(map: Map[String, Double]): SearchDefinition = indexBoost(map.toList: _*)
@@ -257,29 +255,15 @@ case class SearchDefinition(indexesTypes: IndexesAndTypes,
   def storedFields(first: String, rest: String*): SearchDefinition = storedFields(first +: rest)
   def storedFields(fields: Iterable[String]): SearchDefinition = copy(storedFields = fields.toSeq)
 
-  def fetchSource(fetch: Boolean): SearchDefinition = {
-    _builder.setFetchSource(fetch)
-    this
-  }
+  def fetchContext(context: FetchSourceContext): SearchDefinition = copy(fetchContext = context.some)
+  def fetchSource(fetch: Boolean): SearchDefinition = copy(fetchContext = new FetchSourceContext(fetch).some)
 
-  def sourceInclude(first: String, rest: String*): SearchDefinition = sourceInclude(first +: rest)
-  def sourceInclude(includes: Iterable[String]): SearchDefinition = {
-    this.includes = includes.toArray
-    _builder.setFetchSource(this.includes, this.excludes)
-    this
-  }
+  def sourceInclude(first: String, rest: String*): SearchDefinition = sourceFiltering(first +: rest, Nil)
+  def sourceInclude(includes: Iterable[String]) : SearchDefinition = sourceFiltering(includes, Nil)
 
-  def sourceExclude(first: String, rest: String*): SearchDefinition = sourceExclude(first +: rest)
-  def sourceExclude(excludes: Iterable[String]): SearchDefinition = {
-    this.excludes = excludes.toArray
-    _builder.setFetchSource(this.includes, this.excludes)
-    this
-  }
+  def sourceExclude(first: String, rest: String*): SearchDefinition = sourceFiltering(Nil, first +: rest)
+  def sourceExclude(excludes: Iterable[String]) : SearchDefinition = sourceFiltering(Nil, excludes)
 
-  def sourceFiltering(includes: Iterable[String], excludes: Iterable[String]): SearchDefinition = {
-    this.includes = includes.toArray
-    this.excludes = excludes.toArray
-    _builder.setFetchSource(this.includes, this.excludes)
-    this
-  }
+  def sourceFiltering(includes: Iterable[String], excludes: Iterable[String]): SearchDefinition =
+    copy(fetchContext = new FetchSourceContext(true, includes.toArray, excludes.toArray).some)
 }

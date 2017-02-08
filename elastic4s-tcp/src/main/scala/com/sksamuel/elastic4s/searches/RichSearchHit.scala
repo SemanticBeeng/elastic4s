@@ -1,7 +1,5 @@
 package com.sksamuel.elastic4s.searches
 
-import java.nio.ByteBuffer
-
 import com.sksamuel.elastic4s.Hit
 import com.sksamuel.exts.StringOption
 import org.apache.lucene.search.Explanation
@@ -23,10 +21,8 @@ case class RichSearchHit(java: SearchHit) extends Hit {
 
   override def exists = true
 
-  override def sourceAsBytes: Array[Byte] = Option(java.source).getOrElse(Array.empty)
   override def sourceAsString: String = StringOption(java.sourceAsString).getOrElse("")
   override def sourceAsMap: Map[String, AnyRef] = Option(java.sourceAsMap).map(_.asScala.toMap).getOrElse(Map.empty)
-  override def isSourceEmpty: Boolean = !java.hasSource
 
   def explanation: Option[Explanation] = Option(java.explanation)
 

@@ -3,14 +3,13 @@ package com.sksamuel.elastic4s.search
 import com.sksamuel.elastic4s.Preference.Shards
 import com.sksamuel.elastic4s.analyzers.{FrenchLanguageAnalyzer, SnowballAnalyzer, WhitespaceAnalyzer}
 import com.sksamuel.elastic4s._
-import com.sksamuel.elastic4s.searches.queries.RegexpFlag
 import org.apache.lucene.search.join.ScoreMode
 import org.elasticsearch.action.search.SearchType
 import org.elasticsearch.cluster.routing.Preference
-import org.elasticsearch.common.geo.GeoPoint
+import org.elasticsearch.common.geo.{GeoDistance, GeoPoint}
 import org.elasticsearch.common.unit.DistanceUnit
 import org.elasticsearch.index.mapper.DynamicTemplate.MatchType
-import org.elasticsearch.index.query.{MultiMatchQueryBuilder, SimpleQueryStringFlag}
+import org.elasticsearch.index.query.{MultiMatchQueryBuilder, RegexpFlag, SimpleQueryStringFlag}
 import org.elasticsearch.index.search.MatchQuery.ZeroTermsQuery
 import org.elasticsearch.search.MultiValueMode
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval
@@ -148,7 +147,7 @@ class SearchDslTest extends FlatSpec with MockitoSugar with JsonSugar with OneIn
         .withAndOperator()
         .zeroTermsQuery("all")
         .minimumShouldMatch("75%")
-        .fuzziness(2f)
+        .fuzziness("2")
         .prefixLength(4)
         .analyzer(FrenchLanguageAnalyzer)
     }
@@ -559,9 +558,9 @@ class SearchDslTest extends FlatSpec with MockitoSugar with JsonSugar with OneIn
     val req = search("music") types "bands" postFilter {
       geoPolygonQuery(
         "distance",
-        com.sksamuel.elastic4s.GeoPoint(10, 10),
-        com.sksamuel.elastic4s.GeoPoint(20, 20),
-        com.sksamuel.elastic4s.GeoPoint(30, 30)
+        new GeoPoint(10, 10),
+        new GeoPoint(20, 20),
+        new GeoPoint(30, 30)
       )
     }
     req.show should matchJsonResource("/json/search/search_filter_geo_polygon.json")

@@ -1,10 +1,10 @@
 package com.sksamuel.elastic4s.searches.aggs
 
 import com.sksamuel.elastic4s.ScriptBuilder
-import com.sksamuel.exts.OptionImplicits._
 import com.sksamuel.elastic4s.script.ScriptDefinition
+import com.sksamuel.exts.OptionImplicits._
 import org.elasticsearch.search.aggregations.bucket.terms.support.IncludeExclude
-import org.elasticsearch.search.aggregations.bucket.terms.{Terms, TermsAggregationBuilder, TermsAggregator}
+import org.elasticsearch.search.aggregations.bucket.terms.{Terms, TermsAggregationBuilder}
 import org.elasticsearch.search.aggregations.support.ValueType
 import org.elasticsearch.search.aggregations.{AggregationBuilders, Aggregator}
 
@@ -63,11 +63,6 @@ case class TermsAggregationDefinition(name: String) extends AggregationDefinitio
     this
   }
 
-  def bucketCountThresholds(bucketCountThresholds: TermsAggregator.BucketCountThresholds): this.type = {
-    builder.bucketCountThresholds(bucketCountThresholds)
-    this
-  }
-
   def order(order: Terms.Order): TermsAggregationDefinition = {
     builder.order(order)
     this
@@ -84,6 +79,22 @@ case class TermsAggregationDefinition(name: String) extends AggregationDefinitio
   }
 
   def includeExclude(include: Iterable[String], exclude: Iterable[String]): TermsAggregationDefinition = {
+    // empty array doesn't work, has to be null
+    val inc = if (include.isEmpty) null else include.toArray
+    val exc = if (exclude.isEmpty) null else exclude.toArray
+    builder.includeExclude(new IncludeExclude(inc, exc))
+    this
+  }
+
+  def includeExcludeLongs(include: Iterable[Long], exclude: Iterable[Long]): TermsAggregationDefinition = {
+    // empty array doesn't work, has to be null
+    val inc = if (include.isEmpty) null else include.toArray
+    val exc = if (exclude.isEmpty) null else exclude.toArray
+    builder.includeExclude(new IncludeExclude(inc, exc))
+    this
+  }
+
+  def includeExcludeDoubles(include: Iterable[Double], exclude: Iterable[Double]): TermsAggregationDefinition = {
     // empty array doesn't work, has to be null
     val inc = if (include.isEmpty) null else include.toArray
     val exc = if (exclude.isEmpty) null else exclude.toArray

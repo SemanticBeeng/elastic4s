@@ -22,9 +22,12 @@ trait GetExecutables {
       t.refresh.foreach(req.setRefresh)
       t.parent.foreach(req.setParent)
       t.fetchSource.foreach { context =>
-        req.setFetchSource(context.enabled)
-        if (context.includes.nonEmpty || context.excludes.nonEmpty)
-          req.setFetchSource(context.includes.toArray, context.excludes.toArray)
+        if (context.fetchSource) {
+          req.setFetchSource(true)
+          req.setFetchSource(context.includes, context.excludes)
+        } else {
+          req.setFetchSource(false)
+        }
       }
       t.preference.foreach(req.setPreference)
       t.version.foreach(req.setVersion)
@@ -44,17 +47,17 @@ trait GetExecutables {
 
     def builder(c: Client, t: MultiGetDefinition): MultiGetRequestBuilder = {
 
-      val _builder = c.prepareMultiGet()
+      val builder = c.prepareMultiGet()
 
-      t.preference.foreach(_builder.setPreference)
-      t.realtime.foreach(_builder.setRealtime)
-      t.refresh.foreach(_builder.setRefresh)
+      t.preference.foreach(builder.setPreference)
+      t.realtime.foreach(builder.setRealtime)
+      t.refresh.foreach(builder.setRefresh)
       t.gets foreach { get =>
 
         val item = new MultiGetRequest.Item(get.indexAndType.index, get.indexAndType.`type`, get.id)
 
         get.fetchSource.foreach { context =>
-          item.fetchSourceContext(new FetchSourceContext(context.enabled, context.includes.toArray, context.excludes.toArray))
+          item.fetchSourceContext(new FetchSourceContext(context.fetchSource, context.includes, context.excludes))
         }
 
         get.routing.foreach(item.routing)
@@ -65,10 +68,10 @@ trait GetExecutables {
         if (get.storedFields.nonEmpty)
           item.storedFields(get.storedFields: _*)
 
-        _builder.add(item)
+        builder.add(item)
       }
 
-      _builder
+      builder
     }
   }
 }

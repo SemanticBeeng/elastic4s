@@ -1,7 +1,7 @@
 package com.sksamuel.elastic4s.streams
 
 import akka.actor.{Actor, ActorRefFactory, PoisonPill, Props, Stash}
-import com.sksamuel.elastic4s.ElasticClient
+import com.sksamuel.elastic4s.TcpClient
 import com.sksamuel.elastic4s.searches.{RichSearchHit, RichSearchResponse, SearchDefinition}
 import com.sksamuel.elastic4s.streams.PublishActor.Ready
 import org.elasticsearch.ElasticsearchException
@@ -20,12 +20,11 @@ import scala.util.{Failure, Success}
  * @param elements the maximum number of elements to return
  * @param actorRefFactory an Actor reference factory required by the publisher
  */
-class ScrollPublisher private[streams](client: ElasticClient,
+class ScrollPublisher private[streams](client: TcpClient,
                                        search: SearchDefinition,
                                        elements: Long)
                                       (implicit actorRefFactory: ActorRefFactory) extends Publisher[RichSearchHit] {
-
-  require(search.build.scroll() != null, "Search Definition must have a scroll to be used as Publisher")
+  require(search.keepAlive.isDefined, "Search Definition must have a scroll to be used as Publisher")
 
   override def subscribe(s: Subscriber[_ >: RichSearchHit]): Unit = {
     // Rule 1.9 subscriber cannot be null
@@ -39,10 +38,10 @@ class ScrollPublisher private[streams](client: ElasticClient,
   }
 }
 
-class ScrollSubscription(client: ElasticClient, query: SearchDefinition, s: Subscriber[_ >: RichSearchHit], max: Long)
+class ScrollSubscription(client: TcpClient, query: SearchDefinition, s: Subscriber[_ >: RichSearchHit], max: Long)
                         (implicit actorRefFactory: ActorRefFactory) extends Subscription {
 
-  val actor = actorRefFactory.actorOf(Props(new PublishActor(client, query, s, max)))
+  private val actor = actorRefFactory.actorOf(Props(new PublishActor(client, query, s, max)))
 
   private[streams] def ready(): Unit = {
     actor ! PublishActor.Ready
@@ -68,7 +67,7 @@ object PublishActor {
   case class Request(n: Long)
 }
 
-class PublishActor(client: ElasticClient,
+class PublishActor(client: TcpClient,
                    query: SearchDefinition,
                    s: Subscriber[_ >: RichSearchHit],
                    max: Long) extends Actor with Stash {
@@ -81,12 +80,12 @@ class PublishActor(client: ElasticClient,
   private val queue: mutable.Queue[RichSearchHit] = mutable.Queue.empty
 
   // Parse the keep alive setting out of the original query.
-  private val keepAlive = Option(query.build.scroll).map(s => s.keepAlive).map(t => t.toString).getOrElse("1m")
+  private val keepAlive = query.keepAlive.map(_.toString).getOrElse("1m")
 
   // rule 1.03 the subscription should not send any results until the onSubscribe call has returned
   // even tho the user might call request in the onSubscribe, we can't start sending the results yet.
   // this ready method signals to the actor that its ok to start sending data. In the meantime we just stash requests.
-  override def receive = {
+  override def receive: PartialFunction[Any, Unit] = {
     case Ready =>
       context become ready
       unstashAll()
